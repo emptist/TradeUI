@@ -7,7 +7,7 @@ struct TradeApp: App {
     @State private var trades: TradeManager
     
     init() {
-        let trades = TradeManager()
+        let trades = TradeManager(tradeAlertHandler: TradeAlertHandler())
         trades.loadAllUserStrategies(into: StrategyRegistry.shared)
         _trades = State(initialValue: trades)
     }

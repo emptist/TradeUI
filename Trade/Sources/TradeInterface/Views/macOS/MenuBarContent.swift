@@ -1,4 +1,5 @@
 import SwiftUI
+import Runtime
 
 #if os(macOS)
 extension String: @retroactive Identifiable {

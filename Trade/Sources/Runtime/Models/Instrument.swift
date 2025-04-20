@@ -2,25 +2,38 @@ import Foundation
 import Brokerage
 
 public struct Asset: Codable, Hashable {
-    var instrument: Instrument
-    var interval: TimeInterval
-    var strategyName: String
+    public var instrument: Instrument
+    public var interval: TimeInterval
+    public var strategyName: String
     
-    var id: String {
+    public var id: String {
         "\(strategyName)\(instrument.label):\(interval)"
+    }
+    
+    public init(instrument: Instrument, interval: TimeInterval, strategyName: String) {
+        self.instrument = instrument
+        self.interval = interval
+        self.strategyName = strategyName
     }
 }
 
-struct Instrument: Codable, Contract {
-    var type: String
-    var symbol: String
-    var exchangeId: String
-    var currency: String
+public struct Instrument: Codable, Contract {
+    public var type: String
+    public var symbol: String
+    public var exchangeId: String
+    public var currency: String
+    
+    public init(type: String, symbol: String, exchangeId: String, currency: String) {
+        self.type = type
+        self.symbol = symbol
+        self.exchangeId = exchangeId
+        self.currency = currency
+    }
 }
 
 extension Instrument {
     // MARK: Equity
-    static var CBA: Instrument {
+    public static var CBA: Instrument {
         Instrument(
             type: "STK",
             symbol: "CBA",
@@ -29,7 +42,7 @@ extension Instrument {
         )
     }
     
-    static var APPL: Instrument {
+    public static var APPL: Instrument {
         Instrument(
             type: "STK",
             symbol: "AAPL",
@@ -40,7 +53,7 @@ extension Instrument {
     
     // MARK: Cryptocurrency
     
-    static var BTC: Instrument {
+    public static var BTC: Instrument {
         Instrument(
             type: "CRYPTO",
             symbol: "BTC",
@@ -49,7 +62,7 @@ extension Instrument {
         )
     }
     
-    static var ETH: Instrument {
+    public static var ETH: Instrument {
         Instrument(
             type: "CRYPTO",
             symbol: "ETH",
@@ -61,7 +74,7 @@ extension Instrument {
     // MARK: Futures
     
     /// NQ
-    static var NQ: Instrument {
+    public static var NQ: Instrument {
         Instrument(
             type: "FUT",
             symbol: "NQM5",
@@ -72,7 +85,7 @@ extension Instrument {
 
     
     /// Micro E-Mini S&P 500
-    static var MES: Instrument {
+    public static var MES: Instrument {
         Instrument(
             type: "FUT",
             symbol: "MESM5",
@@ -82,7 +95,7 @@ extension Instrument {
     }
     
     /// E-Mini S&P 500
-    static var ES: Instrument {
+    public static var ES: Instrument {
         Instrument(
             type: "FUT",
             symbol: "ESM5",
@@ -92,7 +105,7 @@ extension Instrument {
     }
     
     /// Micro E-mini Russell 2000
-    static var M2K: Instrument {
+    public static var M2K: Instrument {
         Instrument(
             type: "FUT",
             symbol: "M2KM5",
@@ -102,7 +115,7 @@ extension Instrument {
     }
     
     /// E-Mini Russell 2000
-    static var RTY: Instrument {
+    public static var RTY: Instrument {
         Instrument(
             type: "FUT",
             symbol: "RTYM5",

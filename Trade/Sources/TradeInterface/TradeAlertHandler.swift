@@ -4,8 +4,8 @@ import TradingStrategy
 import AppKit
 import SwiftUIComponents
 
-public class TradeAlertHandler: @unchecked Sendable {
-    public static let shared = TradeAlertHandler()
+public class TradeAlertHandler: TradeAlertHandling, @unchecked Sendable {
+    public init() {}
     
     public func sendAlert(_ trade: Trade, recentBar: Klines) {
         if UserDefaults.standard.value(forKey: "trade.alert.sound") as? Bool ?? true {

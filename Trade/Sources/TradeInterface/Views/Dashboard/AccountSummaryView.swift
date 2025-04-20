@@ -5,6 +5,7 @@ import SwiftUIComponents
 
 struct AccountSummaryView: View {
     @AppStorage("trade.alert.message.recipient") private var messageRecipient: String = ""
+    @Environment(TradeManager.self) private var trades
     @State private var tempPhoneNumber: String = ""
     
     let account: Account
@@ -69,7 +70,7 @@ struct AccountSummaryView: View {
                         Button("Test") {
                             let bar = Bar(timeOpen: 0, interval: 0, priceOpen: 0, priceHigh: 0, priceLow: 0, priceClose: 0, volume: 0)
                             let trade = Trade(entryBar: bar, price: 1, trailStopPrice: 2, units: 3)
-                            TradeAlertHandler.shared.sendAlert(trade, recentBar: bar)
+                            trades.tradeAlertHandler?.sendAlert(trade, recentBar: bar)
                         }
                         .padding(.top, 5)
                     }

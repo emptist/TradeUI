@@ -1,5 +1,6 @@
 import SwiftUI
 import TradingStrategy
+import Runtime
 
 struct StrategyPicker: View {
     @EnvironmentObject var strategyRegistry: StrategyRegistry

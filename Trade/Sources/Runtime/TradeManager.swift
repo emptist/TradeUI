@@ -1,5 +1,4 @@
 import Foundation
-import Runtime
 import Brokerage
 import Persistence
 import NIOConcurrencyHelpers
@@ -14,15 +13,15 @@ import OrderedCollections
     public let market: Market
     public let persistance: Persistence
     public let fileProvider: MarketDataFileProvider
+    public let tradeAlertHandler: TradeAlertHandling?
     public private(set) var watchers: [String: Watcher] = [:]
     
-    internal var selectedWatcher: String?
-    
+    public var selectedWatcher: String?
     private var isLookingUpSuggestions: Bool = false
     private var annoucments: [Annoucment] = []
     
     
-    var watcher: Watcher? {
+    public var watcher: Watcher? {
         guard let id = selectedWatcher else { return nil }
         return lock.withLock {
             return watchers[id]
@@ -64,11 +63,13 @@ import OrderedCollections
     public init(
         market: Market = InteractiveBrokers(),
         persistance: Persistence = PersistenceManager.shared,
-        fileProvider: MarketDataFileProvider = MarketDataFileProvider()
+        fileProvider: MarketDataFileProvider = MarketDataFileProvider(),
+        tradeAlertHandler: TradeAlertHandling?
     ) {
         self.market = market
         self.persistance = persistance
         self.fileProvider = fileProvider
+        self.tradeAlertHandler = tradeAlertHandler
     }
     
     public func initializeSockets() {
@@ -111,11 +112,11 @@ import OrderedCollections
                     guard let self else { return nil }
                     return nextAnnoucment(in: annoucments)
                 },
-                tradeEntryNotificationAction: { (trade, recentBar) in
-                    TradeAlertHandler.shared.sendAlert(trade, recentBar: recentBar)
+                tradeEntryNotificationAction: { [weak self] (trade, recentBar) in
+                    self?.tradeAlertHandler?.sendAlert(trade, recentBar: recentBar)
                 },
-                tradeExitNotificationAction: { (trade, recentBar) in
-                    TradeAlertHandler.shared.sendAlert(trade, recentBar: recentBar)
+                tradeExitNotificationAction: { [weak self] (trade, recentBar) in
+                    self?.tradeAlertHandler?.sendAlert(trade, recentBar: recentBar)
                 }
             )
             let watcher = try Watcher(
@@ -219,7 +220,6 @@ import OrderedCollections
             }
         }
         registry.register(strategyType: DoNothingStrategy.self, name: "Viewing only")
-        registry.register(strategyType: SupriseBarStrategy.self, name: "Suprise Bar")
     }
     
     // MARK: Types
