@@ -1,0 +1,87 @@
+{
+  "originHash" : "cf186875e31cc538d5a29655e33e026ecb6df8b453cd87e166706b681a560090",
+  "pins" : [
+    {
+      "identity" : "forexfactory",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/TradeWithIt/ForexFactory",
+      "state" : {
+        "branch" : "main",
+        "revision" : "7bd0040bb3c5d41d0e24738c1586e5991b8b45c5"
+      }
+    },
+    {
+      "identity" : "ibkit",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/stensoosaar/IBKit",
+      "state" : {
+        "branch" : "main",
+        "revision" : "dfe84f89c01f2e9ab9557c97e1f64ed0a7b7243a"
+      }
+    },
+    {
+      "identity" : "strategy",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/TradeWithIt/Strategy.git",
+      "state" : {
+        "branch" : "master",
+        "revision" : "d9732114f545bc98ac181465e7deee0107458d2a"
+      }
+    },
+    {
+      "identity" : "swift-argument-parser",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/apple/swift-argument-parser.git",
+      "state" : {
+        "revision" : "41982a3656a71c768319979febd796c6fd111d5c",
+        "version" : "1.5.0"
+      }
+    },
+    {
+      "identity" : "swift-atomics",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/apple/swift-atomics.git",
+      "state" : {
+        "revision" : "cd142fd2f64be2100422d658e7411e39489da985",
+        "version" : "1.2.0"
+      }
+    },
+    {
+      "identity" : "swift-collections",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/apple/swift-collections.git",
+      "state" : {
+        "revision" : "671108c96644956dddcd89dd59c203dcdb36cec7",
+        "version" : "1.1.4"
+      }
+    },
+    {
+      "identity" : "swift-nio",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/apple/swift-nio",
+      "state" : {
+        "revision" : "c51907a839e63ebf0ba2076bba73dd96436bd1b9",
+        "version" : "2.81.0"
+      }
+    },
+    {
+      "identity" : "swift-system",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/apple/swift-system.git",
+      "state" : {
+        "revision" : "a34201439c74b53f0fd71ef11741af7e7caf01e1",
+        "version" : "1.4.2"
+      }
+    },
+    {
+      "identity" : "swiftuicomponents",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/shial4/SwiftUIComponents.git",
+      "state" : {
+        "branch" : "main",
+        "revision" : "80d003fce38e213e8a5cc6b92f3922d919986426"
+      }
+    }
+  ],
+  "version" : 3
+}

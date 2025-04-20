@@ -46,7 +46,11 @@ struct DashboardView: View {
                 Button(action: {
                     Task {
                         guard viewModel.chooseStrategyFolder(registry: strategyRegistry) else { return }
-                        trades.loadAllUserStrategies(into: strategyRegistry)
+                        guard let strategyFolder = UserDefaults.standard.string(forKey: "StrategyFolderPath") else {
+                            print("⚠️ No strategy folder set in UserDefaults.")
+                            return
+                        }
+                        trades.loadAllUserStrategies(into: strategyRegistry, location: strategyFolder)
                     }
                 }) {
                     Label("Strategies", systemImage: "externaldrive")
@@ -280,7 +284,7 @@ struct DashboardView: View {
     
     private func marketData(contract: any Contract, interval: TimeInterval, strategyName: String) {
         do {
-            let steategyType: Strategy.Type = strategyRegistry.strategy(forName: strategyName) ?? DoNothingStrategy.self
+            let strategyType: Strategy.Type = strategyRegistry.strategy(forName: strategyName) ?? DoNothingStrategy.self
             let asset = Asset(
                 instrument: Instrument(
                     type: contract.type,
@@ -296,7 +300,7 @@ struct DashboardView: View {
                 contract: contract,
                 interval: interval,
                 strategyName: strategyName,
-                strategyType: steategyType
+                strategyType: strategyType
             )
         } catch {
             print("🔴 Failed to subscribe IB market data with error:", error)

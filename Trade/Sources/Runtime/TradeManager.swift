@@ -195,31 +195,38 @@ import OrderedCollections
     }
 
     @MainActor
-    public func loadAllUserStrategies(into registry: StrategyRegistry) {
-        guard let strategyFolder = UserDefaults.standard.string(forKey: "StrategyFolderPath") else {
-            print("⚠️ No strategy folder set in UserDefaults.")
-            return
-        }
-
+    public func loadAllUserStrategies(into registry: StrategyRegistry, location strategyFolder: String) {
         let fileManager = FileManager.default
         guard let files = try? fileManager.contentsOfDirectory(atPath: strategyFolder) else {
             return
         }
 
-        for file in files where file.hasSuffix(".dylib") {
-            let fullPath = (strategyFolder as NSString).appendingPathComponent(file)
-            let strategyNames = loadAvailableStrategies(from: fullPath)
-            print("🔵 loading: ", strategyNames, fullPath)
-            for strategyName in strategyNames {
-                if let strategyType = loadStrategy(from: fullPath, strategyName: strategyName) {
-                    registry.register(strategyType: strategyType, name: strategyName)
-                    print("✅ Successfully registered strategy: \(strategyName)")
-                } else {
-                    print("❌ Failed to load strategy: \(strategyName)")
-                }
-            }
+#if os(Linux)
+        let extensionSuffix = ".so"
+#else
+        let extensionSuffix = ".dylib"
+#endif
+        
+        for file in files where file.hasSuffix(extensionSuffix) {
+            let url = URL(fileURLWithPath: strategyFolder).appendingPathComponent(file)
+            loadStrategy(into: registry, location: url.path())
         }
         registry.register(strategyType: DoNothingStrategy.self, name: "Viewing only")
+    }
+    
+    @MainActor
+    public func loadStrategy(into registry: StrategyRegistry, location fullPath: String) {
+        let fileManager = FileManager.default
+        let strategyNames = loadAvailableStrategies(from: fullPath)
+        print("🔵 loading: ", strategyNames, fullPath)
+        for strategyName in strategyNames {
+            if let strategyType = loadStrategy(from: fullPath, strategyName: strategyName) {
+                registry.register(strategyType: strategyType, name: strategyName)
+                print("✅ Successfully registered strategy: \(strategyName)")
+            } else {
+                print("❌ Failed to load strategy: \(strategyName)")
+            }
+        }
     }
     
     // MARK: Types

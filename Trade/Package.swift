@@ -12,6 +12,10 @@ let package = Package(
             name: "TradeInterface",
             targets: ["TradeInterface"]
         ),
+        .executable(
+            name: "TradeCLI",
+            targets: ["TradeCLI"]
+        ),
     ],
     dependencies: [
         .package(url: "https://github.com/shial4/SwiftUIComponents.git", branch: "main"),
@@ -22,7 +26,8 @@ let package = Package(
         .package(url: "https://github.com/TradeWithIt/Strategy.git", branch: "master"),
         
         // MARK: Tools
-        .package(url: "https://github.com/apple/swift-collections.git", .upToNextMinor(from: "1.1.0"))
+        .package(url: "https://github.com/apple/swift-collections.git", .upToNextMinor(from: "1.1.0")),
+        .package(url: "https://github.com/apple/swift-argument-parser.git", .upToNextMajor(from: "1.5.0")),
     ],
     targets: [
         .target(
@@ -32,21 +37,20 @@ let package = Package(
             ]
         ),
         .target(
-            name: "Runtime",
-            dependencies: [
-                .target(name: "Brokerage"),
-                .target(name: "Persistence"),
-                
-                .product(name: "Collections", package: "swift-collections"),
-            ]
-        ),
-        .target(
             name: "Persistence",
             dependencies: [
                 // .product(name: "GRDB", package: "GRDB.swift"),
             ]
         ),
-        
+        .target(
+            name: "Runtime",
+            dependencies: [
+                .target(name: "Brokerage"),
+                .target(name: "Persistence"),
+                .product(name: "TradingStrategy", package: "Strategy"),
+                .product(name: "Collections", package: "swift-collections"),
+            ]
+        ),
         .target(
             name: "TradeInterface",
             dependencies: [
@@ -64,6 +68,15 @@ let package = Package(
                 .linkedFramework("Foundation"),
                 .linkedFramework("UIKit", .when(platforms: [.iOS])),
                 .linkedFramework("AppKit", .when(platforms: [.macOS])),
+            ]
+        ),
+        .executableTarget(
+            name: "TradeCLI",
+            dependencies: [
+                .target(name: "Runtime"),
+                .target(name: "Brokerage"),
+                .product(name: "TradingStrategy", package: "Strategy"),
+                .product(name: "ArgumentParser", package: "swift-argument-parser"),
             ]
         ),
     ]

@@ -8,7 +8,10 @@ struct TradeApp: App {
     
     init() {
         let trades = TradeManager(tradeAlertHandler: TradeAlertHandler())
-        trades.loadAllUserStrategies(into: StrategyRegistry.shared)
+        if let strategyFolder = UserDefaults.standard.string(forKey: "StrategyFolderPath"){
+            trades.loadAllUserStrategies(into: StrategyRegistry.shared, location: strategyFolder)
+        }
+        
         _trades = State(initialValue: trades)
     }
     
