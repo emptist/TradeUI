@@ -14,7 +14,6 @@ public final class TradeAggregator: Hashable {
     private var marketOrder: MarketOrder?
     private var tradeSignals: Set<Request> = []
     private let tradeQueue = DispatchQueue(label: "TradeAggregatorQueue", attributes: .concurrent)
-    private var stats = TradeStats()
     
     private var getNextTradingAlertsAction: (() -> Annoucment?)?
     private var tradeEntryNotificationAction: ((_ trade: Trade, _ recentBar: Klines) -> Void)?
@@ -185,7 +184,6 @@ public final class TradeAggregator: Hashable {
             ? recentBar.priceClose - activeTrade.price
             : activeTrade.price - recentBar.priceClose
             print("❌ profit: \(profit) entry: \(activeTrade.price) , exit: \(recentBar.priceClose), didHitStopLoss: \(wouldHitStopLoss)")
-            stats.recordTrade(entry: activeTrade.price, exit: recentBar.priceClose, isLong: activeTrade.entryBar.isLong)
             await request.watcherState.updateActiveTrade(nil)
         } else if shouldExit, isTradeExitEnabled {
             guard let account = marketOrder?.account else { return }
@@ -235,25 +233,4 @@ public final class TradeAggregator: Hashable {
 
 public extension TradeAggregator.Request {
     var symbol: String { contract.symbol }
-}
-
-struct TradeStats {
-    var longTrades: Int = 0
-    var shortTrades: Int = 0
-    var longPnL: Double = 0
-    var shortPnL: Double = 0
-
-    mutating func recordTrade(entry: Double, exit: Double, isLong: Bool) {
-        let profit = isLong ? (exit - entry) : (entry - exit)
-
-        if isLong {
-            longTrades += 1
-            longPnL += profit
-        } else {
-            shortTrades += 1
-            shortPnL += profit
-        }
-
-        print("✅ \(isLong ? "Long" : "Short") trade: profit \(profit), entry \(entry), exit \(exit)")
-    }
 }

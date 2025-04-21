@@ -219,7 +219,6 @@ import OrderedCollections
     
     @MainActor
     public func loadStrategy(into registry: StrategyRegistry, location fullPath: String) {
-        let fileManager = FileManager.default
         let strategyNames = loadAvailableStrategies(from: fullPath)
         print("🔵 loading: ", strategyNames, fullPath)
         for strategyName in strategyNames {
