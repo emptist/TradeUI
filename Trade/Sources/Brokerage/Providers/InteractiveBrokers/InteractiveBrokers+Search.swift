@@ -44,24 +44,22 @@ extension InteractiveBrokers {
             symbol: Symbol,
             productType: [IBSecuritiesType],
             productCountry: [String] = ["US"]
-        ) throws -> AnyPublisher<[Product], Swift.Error> {
+        ) async throws -> [Product] {
             let url = URL(string: "https://www.interactivebrokers.com/webrest/search/products-by-filters")!
             var request = URLRequest(url: url)
             request.httpMethod = "POST"
             request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-            
+
             let requestBody = Product.Request(
-                productCountry: productCountry, 
+                productCountry: productCountry,
                 productSymbol: symbol,
-                productType: productType.map({ $0.rawValue })
+                productType: productType.map { $0.rawValue }
             )
             request.httpBody = try JSONEncoder().encode(requestBody)
 
-            return URLSession.shared.dataTaskPublisher(for: request)
-                .map(\.data)
-                .decode(type: Product.Response.self, decoder: JSONDecoder())
-                .map { Array($0.products) }
-                .eraseToAnyPublisher()
+            let (data, _) = try await URLSession.shared.data(for: request)
+            let response = try JSONDecoder().decode(Product.Response.self, from: data)
+            return Array(response.products)
         }
         
         // MARK: Internal Types

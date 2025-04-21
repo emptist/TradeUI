@@ -85,7 +85,13 @@ struct DashboardView: View {
             suggestionView(contract: Instrument.NQ, interval: interval)
             suggestionView(contract: Instrument.ES, interval: interval)
         }
-        .searchable(text: $viewModel.symbol.value)
+        .searchable(text: $viewModel.symbol)
+        .onChangeDebounced(of: viewModel.symbol, interval: .seconds(0.5)) {
+            let symbol = viewModel.symbol
+            Task { @MainActor in
+                await self.viewModel.loadProducts(symbol: symbol)
+            }
+        }
         .onReceive(timer) { _ in
             account = trades.market.account
         }

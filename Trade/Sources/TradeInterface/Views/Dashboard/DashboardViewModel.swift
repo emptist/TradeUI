@@ -20,32 +20,21 @@ extension DashboardView {
             }
         }
         
-        private var cancellables = Set<AnyCancellable>()
-        var symbol = ObservableString(initialValue: "")
+        var symbol = ""
         var suggestedSearches: [any Contract] = []
         var events: [ForexEvent] = []
         var selectedTab: SidebarTab = .watchers
         
         private var market: Market?
         
-        deinit {
-            cancellables.forEach { $0.cancel() }
-            cancellables.removeAll()
-        }
-        
-        init() {
-            symbol.publisher
-                .removeDuplicates()
-                .throttle(for: .seconds(0.5), scheduler: DispatchQueue.main, latest: true)
-                .sink { [weak self] symbol in
-                    guard let self, let market = self.market else { return }
-                    do {
-                        try self.loadProducts(market: market, symbol: Symbol(symbol))
-                    } catch {
-                        print("🔴 Failed to suggest search with error: ", error)
-                    }
-                }
-                .store(in: &cancellables)
+        @MainActor
+        func loadProducts(symbol: String) async {
+            guard let market = self.market else { return }
+            do {
+                try await loadProducts(market: market, symbol: symbol)
+            } catch {
+                print("🔴 Failed to suggest search with error:", error)
+            }
         }
         
         func updateMarketData(_ market: Market) {
@@ -66,17 +55,9 @@ extension DashboardView {
             return false
         }
         
-        private func loadProducts(market: MarketSearch, symbol: Symbol) throws {
-            try market.search(nameOrSymbol: symbol)
-                .receive(on: DispatchQueue.main)
-                .sink(receiveCompletion: { completion in
-                    if case .failure(let error) = completion {
-                        print("🔴 errorMessage: ", error)
-                    }
-                }, receiveValue: { response in
-                    self.suggestedSearches = response
-                })
-                .store(in: &cancellables)
+        @MainActor
+        private func loadProducts(market: MarketSearch, symbol: Symbol) async throws {
+            self.suggestedSearches = try await market.search(nameOrSymbol: symbol)
         }
         
         @MainActor
@@ -125,27 +106,6 @@ extension DashboardView {
 }
 
 // MARK: Types
-
-class ObservableString {
-    // The subject that will manage the updates
-    private let subject = CurrentValueSubject<String, Never>("")
-    
-    // The public publisher that external subscribers can subscribe to
-    var publisher: AnyPublisher<String, Never> {
-        subject.eraseToAnyPublisher()
-    }
-    
-    // The property that you will update
-    var value: String {
-        didSet {
-            subject.send(value)
-        }
-    }
-    
-    init(initialValue: String) {
-        self.value = initialValue
-    }
-}
 
 extension ForexEvent: TradingStrategy.Annoucment {
     public var timestamp: TimeInterval {

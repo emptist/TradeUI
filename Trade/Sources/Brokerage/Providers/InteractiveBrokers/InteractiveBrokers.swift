@@ -131,12 +131,8 @@ public class InteractiveBrokers: @unchecked Sendable, Market {
     
     // MARK: - Market Symbol Search
     
-    public func search(nameOrSymbol symbol: Symbol) throws -> AnyPublisher<[any Contract], Swift.Error> {
-        try Product.fetchProducts(symbol: symbol, productType: [.stock])
-            .map { products in
-                products as [any Contract]
-            }
-            .eraseToAnyPublisher()
+    public func search(nameOrSymbol symbol: Symbol) async throws -> [any Contract] {
+        try await Product.fetchProducts(symbol: symbol, productType: [.stock])
     }
     
     // MARK: Market Data
