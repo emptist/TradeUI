@@ -1,7 +1,6 @@
 import Foundation
-import Combine
 
-public protocol MarketOrder {
+public protocol MarketOrder: Sendable {
     init()
     /// Connect Service
     func connect() throws
@@ -18,6 +17,7 @@ public protocol MarketOrder {
         price: Double,
         quantity: Double
     ) throws
+    
     func makeLimitWithTrailingStopOrder(
         contract product: any Contract,
         action: OrderAction,
