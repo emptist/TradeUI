@@ -7,6 +7,8 @@ import SwiftUIComponents
 public class TradeAlertHandler: TradeAlertHandling, @unchecked Sendable {
     public init() {}
     
+    public func patternInformationChange(_ patternInformation: [String: Bool]) {}
+    
     public func sendAlert(_ trade: Trade, recentBar: Klines) {
         if UserDefaults.standard.value(forKey: "trade.alert.sound") as? Bool ?? true {
             playSoundAlert()

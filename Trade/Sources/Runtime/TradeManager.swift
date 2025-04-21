@@ -117,6 +117,9 @@ import OrderedCollections
                 },
                 tradeExitNotificationAction: { [weak self] (trade, recentBar) in
                     self?.tradeAlertHandler?.sendAlert(trade, recentBar: recentBar)
+                },
+                patternInformationChangeAction: { [weak self] patternInformation in
+                    self?.tradeAlertHandler?.patternInformationChange(patternInformation)
                 }
             )
             let watcher = try Watcher(

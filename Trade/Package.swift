@@ -19,7 +19,8 @@ let package = Package(
     ],
     dependencies: [
         .package(url: "https://github.com/shial4/SwiftUIComponents.git", branch: "main"),
-        .package(url: "https://github.com/stensoosaar/IBKit", branch: "main"),
+//        .package(url: "https://github.com/stensoosaar/IBKit", branch: "main"),
+        .package(url: "https://github.com/TradeWithIt/IBKit", branch: "Swift-6-preparation"),
         .package(url: "https://github.com/TradeWithIt/ForexFactory", branch: "main"),
         
         // MARK: Trading Strategy

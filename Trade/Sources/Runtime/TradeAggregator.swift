@@ -19,19 +19,22 @@ public final class TradeAggregator: Hashable {
     private var getNextTradingAlertsAction: (() -> Annoucment?)?
     private var tradeEntryNotificationAction: ((_ trade: Trade, _ recentBar: Klines) -> Void)?
     private var tradeExitNotificationAction: ((_ trade: Trade, _ recentBar: Klines) -> Void)?
+    private var patternInformationChangeAction: ((_ patternInformation: [String: Bool]) -> Void)?
     
     public init(
         contract: any Contract,
         marketOrder: MarketOrder? = nil,
         getNextTradingAlertsAction: (() -> Annoucment?)? = nil,
         tradeEntryNotificationAction: ((_ trade: Trade, _ recentBar: Klines) -> Void)? = nil,
-        tradeExitNotificationAction: ((_ trade: Trade, _ recentBar: Klines) -> Void)? = nil
+        tradeExitNotificationAction: ((_ trade: Trade, _ recentBar: Klines) -> Void)? = nil,
+        patternInformationChangeAction: ((_ patternInformation: [String: Bool]) -> Void)? = nil
     ) {
         self.marketOrder = marketOrder
         self.contract = contract
         self.getNextTradingAlertsAction = getNextTradingAlertsAction
         self.tradeEntryNotificationAction = tradeEntryNotificationAction
         self.tradeExitNotificationAction = tradeExitNotificationAction
+        self.patternInformationChangeAction = patternInformationChangeAction
     }
     
     deinit {
@@ -42,6 +45,7 @@ public final class TradeAggregator: Hashable {
     
     public func registerTradeSignal(_ request: Request) async {
         let strategy = await request.watcherState.getStrategy()
+        patternInformationChangeAction?(strategy.patternInformation)
         if strategy.patternIdentified {
             let contract = contract.label
             let count = tradeQueue.sync(flags: .barrier) { [weak self] in

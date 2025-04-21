@@ -68,25 +68,6 @@ struct Trade: @preconcurrency ParsableCommand {
             strategyName: strategyName
         )
         
-        Task {
-            let dateFormatter = DateFormatter()
-            dateFormatter.dateStyle = .medium
-            dateFormatter.timeStyle = .medium
-            
-            // Assume watchers is a dictionary like [String: Watcher]
-            while true {
-                for (id, watcher) in trades.watchers {
-                    let info = await watcher.watcherState.getStrategy().patternInformation
-                    let timestamp = dateFormatter.string(from: Date())
-                    
-                    // Format patternInformation
-                    printPatternInformation(info, watcherId: id, timestamp: timestamp)
-                }
-                // Poll every second to avoid overwhelming the system
-                try? await Task.sleep(nanoseconds: 1_000_000_000)
-            }
-        }
-        
         // Keep the process alive
         if verbose { print("🏃‍♂️ Running trading process. Press Ctrl+C to stop.") }
         RunLoop.main.run()
@@ -118,21 +99,5 @@ struct Trade: @preconcurrency ParsableCommand {
         } catch {
             if verbose { print("🔴 Failed to subscribe IB market data with error:", error) }
         }
-    }
-    
-    private func printPatternInformation(_ info: [String: Bool], watcherId: String, timestamp: String) {
-        let patterns = info.map { (pattern, active) in
-            "\(active ? "✅" : "❌") \(pattern): \(active ? "Active" : "Inactive")"
-        }.joined(separator: "\n│ ")
-        
-        print("""
-                📊 Strategy Update (Watcher: \(watcherId))
-                ┌──────────────────────────────┐
-                │ Timestamp: \(timestamp)      │
-                ├──────────────────────────────┤
-                │ Patterns:                    │
-                │ \(patterns)
-                └──────────────────────────────┘
-                """)
     }
 }

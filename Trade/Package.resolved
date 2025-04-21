@@ -1,5 +1,5 @@
 {
-  "originHash" : "cf186875e31cc538d5a29655e33e026ecb6df8b453cd87e166706b681a560090",
+  "originHash" : "4e899ec592c958ed2341e954836dcbf65c9f989466e9e94b16eae2bb61eb1554",
   "pins" : [
     {
       "identity" : "forexfactory",
@@ -13,10 +13,10 @@
     {
       "identity" : "ibkit",
       "kind" : "remoteSourceControl",
-      "location" : "https://github.com/stensoosaar/IBKit",
+      "location" : "https://github.com/TradeWithIt/IBKit",
       "state" : {
-        "branch" : "main",
-        "revision" : "dfe84f89c01f2e9ab9557c97e1f64ed0a7b7243a"
+        "branch" : "Swift-6-preparation",
+        "revision" : "daf8a7f72ff575f66248a53a97a4ff1a02bfd125"
       }
     },
     {

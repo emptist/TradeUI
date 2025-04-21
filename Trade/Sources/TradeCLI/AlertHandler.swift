@@ -3,6 +3,20 @@ import TradingStrategy
 import Foundation
 
 struct AlertHandler: TradeAlertHandling, Sendable {
+    func patternInformationChange(_ patternInformation: [String: Bool]) {
+        let patterns = patternInformation.map { (pattern, active) in
+            "\(active ? "✅" : "❌") \(pattern): \(active ? "Active" : "Inactive")"
+        }.joined(separator: "\n│ ")
+        
+        print("""
+                📊 Strategy Update
+                ┌──────────────────────────────┐
+                │ Patterns:                    │
+                │ \(patterns)
+                └──────────────────────────────┘
+                """)
+    }
+    
     func sendAlert(_ trade: Runtime.Trade, recentBar: any TradingStrategy.Klines) {
         let dateFormatter = DateFormatter()
         dateFormatter.dateStyle = .medium
