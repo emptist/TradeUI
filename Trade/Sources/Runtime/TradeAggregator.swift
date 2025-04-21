@@ -179,7 +179,7 @@ public final class TradeAggregator: Hashable {
             tradeExitNotificationAction?(activeTrade, recentBar)
         }
         
-        if request.isSimulation, shouldExit || wouldHitStopLoss {
+        if request.isSimulation, (shouldExit || wouldHitStopLoss) {
             let profit = activeTrade.entryBar.isLong
             ? recentBar.priceClose - activeTrade.price
             : activeTrade.price - recentBar.priceClose
