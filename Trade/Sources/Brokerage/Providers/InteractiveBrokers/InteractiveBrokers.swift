@@ -216,13 +216,17 @@ public class InteractiveBrokers: @unchecked Sendable, Market {
             size: size,
             source: .trades,
             lookback: duration,
-            extendedTrading: false
+            extendedTrading: false,
+            includeExpired: false
         )
-
+        print("historicBarPublisher", historicBarPublisher, request)
         return AsyncStream { continuation in
-            Task {
-                let stream = await client.eventFeed
-                try client.send(request: request)
+            Task { [weak self, continuation] in
+                guard let stream = await self?.client.eventFeed else {
+                    continuation.finish()
+                    return
+                }
+                try self?.client.send(request: request)
                 for await event in stream {
                     guard
                         let event = event as? IBIndexedEvent,
@@ -230,11 +234,12 @@ public class InteractiveBrokers: @unchecked Sendable, Market {
                     else { continue }
                     
                     let asset = Asset(contract: contract, interval: interval)
-                    if unsubscribeMarketData.contains(asset) {
-                        unsubscribeMarketData.remove(asset)
-                        unsubscribeQuote.insert(contract)
-                        unsubscribeMarketData(requestID)
-                        break
+                    if let data = self?.unsubscribeMarketData, data.contains(asset) {
+                        self?.unsubscribeMarketData.remove(asset)
+                        self?.unsubscribeQuote.insert(contract)
+                        self?.unsubscribeMarketData(requestID)
+                        continuation.finish()
+                        return
                     }
                     switch event {
                     case let event as IBPriceHistory:

@@ -123,4 +123,34 @@ extension Instrument {
             currency: "USD"
         )
     }
+    
+    // DAX® Futures
+    public static var FDAX: Instrument {
+        Instrument(
+            type: "FUT",
+            symbol: "FDAX",
+            exchangeId: "EUREX",
+            currency: "EUR"
+        )
+    }
+    
+    // Mini-DAX® Futures
+    public static var FDXM: Instrument {
+        Instrument(
+            type: "FUT",
+            symbol: "FDXM",
+            exchangeId: "EUREX",
+            currency: "EUR"
+        )
+    }
+    
+    //Micro-DAX® Futures
+    public static var FDXS: Instrument {
+        Instrument(
+            type: "FUT",
+            symbol: "FDXS",
+            exchangeId: "EUREX",
+            currency: "EUR"
+        )
+    }
 }

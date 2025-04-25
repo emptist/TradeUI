@@ -85,6 +85,7 @@ struct DashboardView: View {
             suggestionView(contract: Instrument.NQ, interval: interval)
             suggestionView(contract: Instrument.ES, interval: interval)
             suggestionView(contract: Instrument.BTC, interval: interval)
+            suggestionView(contract: Instrument.FDAX, interval: interval)
         }
         .searchable(text: $viewModel.symbol)
         .onChangeDebounced(of: viewModel.symbol, interval: .seconds(0.5)) {

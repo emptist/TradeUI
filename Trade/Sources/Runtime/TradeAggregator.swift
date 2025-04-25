@@ -150,6 +150,7 @@ public final class TradeAggregator: Hashable {
         }
         guard isTradeEntryEnabled else { return }
         do {
+            print("✅ makeLimitWithTrailingStopOrder: ", marketOpen as Any)
             try marketOrder?.makeLimitWithTrailingStopOrder(
                 contract: contract,
                 action: trade.entryBar.isLong ? .buy : .sell,
@@ -225,6 +226,7 @@ public final class TradeAggregator: Hashable {
             guard let account = marketOrder?.account else { return }
             guard let position = account.positions.first(where: { $0.label == contract.label }) else { return }
             do {
+                print("❌ makeLimitOrder")
                 try marketOrder?.makeLimitOrder(
                     contract: contract,
                     action: activeTrade.entryBar.isLong ? .sell : .buy,
