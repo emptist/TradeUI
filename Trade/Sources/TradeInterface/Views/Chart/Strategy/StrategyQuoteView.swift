@@ -62,8 +62,8 @@ public struct StrategyQuoteView: View {
             .frame(height: 32)
         }
         .padding(.horizontal)
-        .task { await fetchQuote() }
         .onReceive(timer) { _ in
+            Task { await fetchQuote() }
             Task { await updateMarketOpenState() }
         }
     }

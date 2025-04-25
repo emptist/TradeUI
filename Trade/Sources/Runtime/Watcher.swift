@@ -128,8 +128,8 @@ public final class Watcher: @unchecked Sendable, Identifiable {
     
     private func setupMarketQuoteData(market: MarketData) async {
         do {
-            var latestQuote: Quote?
             for await newQuote in try market.quotePublisher(contract: contract) {
+                var latestQuote: Quote?
                 let quote = await watcherState.getQuote()
                 if var existingQuote = latestQuote ?? quote {
                     switch newQuote.type {
@@ -151,9 +151,9 @@ public final class Watcher: @unchecked Sendable, Identifiable {
                         volume: newQuote.type == .volume ? newQuote.value : nil
                     )
                 }
-            }
-            if let updatedQuote = latestQuote {
-                await watcherState.updateQuote(updatedQuote)
+                if let updatedQuote = latestQuote {
+                    await watcherState.updateQuote(updatedQuote)
+                }
             }
         } catch {
             print("Quote stream error: \(error)")

@@ -308,7 +308,6 @@ public class InteractiveBrokers: @unchecked Sendable, Market {
         let requestID = client.nextRequestID
         let contract = self.contract(product)
         let request = IBMarketDataRequest(requestID: requestID, contract: contract)
-        
         return AsyncStream {[weak self] continuation in
             guard let self else {
                 continuation.finish()
