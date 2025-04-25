@@ -95,7 +95,7 @@ public final class KlineMarketDataFile: @unchecked Sendable, MarketDataFile {
                 lines.append(contentsOf: try candleData.bars.map { String(data: try encoder.encode($0), encoding: .utf8) ?? "" })
             }
 
-            try lines.joined(separator: "\\n").write(to: fileUrl, atomically: true, encoding: .utf8)
+            try lines.joined(separator: "\n").write(to: fileUrl, atomically: true, encoding: .utf8)
         } catch {
             print("Failed to save or update the file: \\(error)")
         }

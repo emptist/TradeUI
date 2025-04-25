@@ -106,7 +106,7 @@ public class InteractiveBrokers: @unchecked Sendable, Market {
         }
     }
     
-    public func disocnnect() async throws {
+    public func disconnect() async throws {
         await client.disconnect()
     }
     

@@ -213,7 +213,7 @@ import OrderedCollections
             loadStrategy(into: registry, location: url.path())
         }
         registry.register(strategyType: DoNothingStrategy.self, name: "Viewing only")
-        registry.register(strategyType: SupriseBarStrategy.self, name: "Suprise Bar")
+        registry.register(strategyType: SurpriseBarStrategy.self, name: "Surprise Bar")
         registry.register(strategyType: FollowMovingAverageStrategy.self, name: "Follow MVA")
     }
     

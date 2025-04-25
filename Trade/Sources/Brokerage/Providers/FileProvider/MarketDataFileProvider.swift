@@ -40,7 +40,7 @@ public final class MarketDataFileProvider: @unchecked Sendable, MarketData {
         }
     }
     
-    public func disocnnect() async throws {
+    public func disconnect() async throws {
         activeSubscriptions.forEach { $0.close() }
         activeSubscriptions.removeAll()
     }

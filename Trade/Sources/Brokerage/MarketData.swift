@@ -9,7 +9,7 @@ public protocol MarketData: Sendable {
     init()
     /// Connect Service
     func connect() async throws
-    func disocnnect() async throws
+    func disconnect() async throws
     
     var account: Account? { get }
     /// Requests price history with continues real time updates for asset.

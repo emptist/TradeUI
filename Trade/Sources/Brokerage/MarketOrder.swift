@@ -4,7 +4,7 @@ public protocol MarketOrder: Sendable {
     init()
     /// Connect Service
     func connect() async throws
-    func disocnnect() async throws
+    func disconnect() async throws
     var account: Account? { get }
     
     /// Retrieve All Active Orders

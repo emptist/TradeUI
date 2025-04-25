@@ -110,7 +110,7 @@ public final class TradeAggregator: Hashable {
             guard units > 0 else { return }
             
             let initialStopLoss = strategy.adjustStopLoss(entryBar: entryBar)
-            print("✅ enterTradeIfStrategyIsValidated, symbol: \(request.symbol): intervl: \(request.interval)")
+            print("✅ enterTradeIfStrategyIsValidated, symbol: \(request.symbol): interval: \(request.interval)")
             print("✅ enterTradeIfStrategyIsValidated units: ", units)
             print("✅ enterTradeIfStrategyIsValidated stopLoss: ", initialStopLoss ?? 0)
             guard let initialStopLoss else { return }
