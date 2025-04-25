@@ -2,13 +2,11 @@ import Foundation
 import Brokerage
 import Persistence
 import NIOConcurrencyHelpers
-import Combine
 import TradingStrategy
 import OrderedCollections
 
 @Observable public class TradeManager: @unchecked Sendable {
     private let lock: NIOLock = NIOLock()
-    private var cancellable: AnyCancellable?
     
     public let market: Market
     public let persistance: Persistence
@@ -76,7 +74,7 @@ import OrderedCollections
         Task {
             do {
                 try await Task.sleep(for: .milliseconds(200))
-                try market.connect()
+                try await market.connect()
             } catch {
                 print("initializeSockets failed with error: ", error)
             }
@@ -215,6 +213,8 @@ import OrderedCollections
             loadStrategy(into: registry, location: url.path())
         }
         registry.register(strategyType: DoNothingStrategy.self, name: "Viewing only")
+        registry.register(strategyType: SurpriseBarStrategy.self, name: "Surprise Bar")
+        registry.register(strategyType: FollowMovingAverageStrategy.self, name: "Follow MVA")
     }
     
     @MainActor

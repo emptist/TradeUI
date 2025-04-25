@@ -1,223 +1,209 @@
 # **TradeUI**
 
-![Swift](https://img.shields.io/badge/Swift-5.0-orange) ![Platforms](https://img.shields.io/badge/platforms-macOS-blue)
+![Swift Version](https://img.shields.io/badge/Swift-6.1-orange.svg) ![macOS 14+](https://img.shields.io/badge/macOS-14.0%2B-blue.svg) 
+ [![SPM](https://img.shields.io/badge/Swift%20Package%20Manager-compatible-blue.svg)](https://github.com/apple/swift-package-manager) ![Platforms](https://img.shields.io/badge/platforms-macOS|Linux|Windows-blue) ![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)
 
-## **Overview**
-TradeUI is a comprehensive Swift-based trading interface that integrates real-time market data, executes trades, and provides an intuitive user experience for managing trading activities. This project is structured into modular components, ensuring scalability, maintainability, and flexibility for traders and developers alike.
+## Overview
 
-## **Architecture**
-TradeUI is built around several key modules that interact seamlessly to provide a fully functional trading environment. The primary components include:
-
-### **1. Brokerage Module**
-Responsible for handling market data retrieval, trade execution, and order management.
-
-- **Market.swift** – Defines market-related structures and provides real-time price updates.
-- **MarketData.swift** – Manages historical and live market data required for analysis.
-- **MarketOrder.swift** – Facilitates order placement and execution.
-- **MarketSearch.swift** – Allows searching for market instruments and assets.
-
-### **2. Runtime Module**
-Handles the execution logic, monitoring active trades, and ensuring strategies are adhered to.
-
-- **Watcher.swift** – Observes market conditions, monitors active trades, and executes orders based on defined strategies.
-
-### **3. Trade Interface Module**
-Acts as the central controller, managing trade flow and UI integration.
-
-- **TradeManager.swift** – Oversees trade execution, market interaction, and user-initiated actions.
-
-### **4. Strategy Module**
-Defines the logic for automated and manual trading strategies.
-
-- **Strategy.swift** – Defines the `Strategy` protocol for implementing trading logic.
-- **Phase.swift** – Categorizes market trends into structured phases (e.g., uptrend, downtrend, sideways).
-- **Klines.swift** – Represents candlestick data for technical analysis.
-- **Scale.swift** – Manages time and price scaling for market analysis.
-
-### **5. ForexFactory Module**
-Fetches and integrates economic events for fundamental analysis.
-
-- **ForexFactory.swift** – Retrieves Forex Factory economic events, allowing strategies to adjust based on macroeconomic news.
-
-### **6. Headless Trading Instance**
-TradeUI allows running a trading instance without the UI application, enabling execution from the terminal on any supported platform, including macOS, Linux, and Windows.
-
-- **CLI Mode** – Enables trading via command-line interfaces.
-- **Cross-Platform Compatibility** – Can run on macOS, Linux, and Windows without requiring a graphical user interface.
-
-### **7. Trade Decision Engine**
-Handles trade entries, risk management, profit-taking, and exits.
-
-- **TradeDecisionEngine.swift** – Manages trade lifecycle decisions, from entry to exit.
-- **RiskManager.swift** – Implements stop-loss and take-profit mechanisms.
-- **PositionManager.swift** – Optimizes trade position sizing based on market conditions.
+**TradeUI** is a Swift-based package and application built with **SwiftUI**, designed for trade visualization and analysis. It features both a graphical user interface (GUI) application and a command-line interface (CLI) for diverse use cases. The repository is modular, making it easy to extend and integrate with additional trading strategies and tools.
 
 ---
 
-## **📌 Adding Your Own Strategy**
-TradeUI **does not include any pre-built strategies**. However, you can create your own **custom strategies** and dynamically load them into TradeUI.
+## Installation
 
-### **Step 1: Create a Strategy Package**
-To create your own strategy, use the [Strategy Protocol and Utilities Library](https://github.com/TradeWithIt/Strategy), which provides all the necessary functionality to define and compile trading strategies.
+### Prerequisites
 
-Ensure that your **`Package.swift`** is set up correctly:
-```swift
-// swift-tools-version: 5.9
-import PackageDescription
+1. **Xcode**: Ensure Xcode (version supporting Swift 6.1 or higher) is installed.
+2. **Swift Package Manager (SPM)**: TradeUI uses SPM for dependency management.
 
-let package = Package(
-    name: "MyStrategyPackage",
-    products: [
-        .library(name: "MyStrategyPackage", type: .dynamic, targets: ["MyStrategyPackage"]),
-    ],
-    dependencies: [
-        .package(url: "https://github.com/TradeWithIt/Strategy.git", branch: "main"),
-    ],
-    targets: [
-        .target(
-            name: "MyStrategyPackage",
-            dependencies: [
-                .product(name: "TradingStrategy", package: "Strategy")
-            ]
-        ),
-        .testTarget(
-            name: "MyStrategyPackageTests",
-            dependencies: ["MyStrategyPackage"]),
-    ]
-)
+### Steps
+
+1. Clone the repository:
+    ```bash
+    git clone https://github.com/TradeWithIt/TradeUI.git
+    cd TradeUI
+    ```
+2. Open the Xcode project:
+    ```bash
+    open TradeUI.xcodeproj
+    ```
+3. Build and run the application:
+    - Select your desired target (simulator or device).
+    - Press `Cmd + R` to run the application.
+
+---
+
+## Architecture & Runtime
+
+TradeUI is organized into several Swift Package modules and targets, enabling a scalable and reusable architecture:
+
+### Main Targets
+- **Brokerage**: Manages broker integration (e.g., IBKit).
+- **Persistence**: Provides trade data storage and caching.
+- **Runtime**: Core runtime for data processing and trade monitoring.
+- **TradeInterface**: The main module powering the SwiftUI-based graphical interface.
+- **TradeCLI**: Command-line interface for trade management and strategy simulation.
+
+### Key Features
+- **Declarative UI**: Powered by SwiftUI for building intuitive interfaces.
+- **Modular Design**: Designed for scalability and reusability.
+- **Reactive Programming**: Uses Combine framework for handling asynchronous data streams.
+
+### Dependencies
+TradeUI integrates several libraries and tools:
+- **Core Dependencies**:
+  - [SwiftUIComponents](https://github.com/shial4/SwiftUIComponents)
+  - [IBKit](https://github.com/TradeWithIt/IBKit)
+  - [ForexFactory](https://github.com/TradeWithIt/ForexFactory)
+  - [Strategy](https://github.com/TradeWithIt/Strategy)
+- **Tools**:
+  - [Swift Collections](https://github.com/apple/swift-collections)
+  - [Swift Argument Parser](https://github.com/apple/swift-argument-parser)
+
+### Supported Platforms
+- iOS 17+
+- macOS 15+
+- The package is **pure Swift** and runs on all supported Swift platforms using **Foundation**.
+
+---
+
+## Application Screenshots
+
+Here are some screenshots showcasing the application:
+
+### Main Window
+![Main Window](./Assets/main_window.png)
+
+### System Application Bar
+![System Application Bar](./Assets/bar_window.png)
+
+### Watcher Preview Window
+![Watcher Preview Window](./Assets/watcher_window.png)
+
+These screenshots provide a visual overview of the application's key components and interface.
+
+---
+
+## Sub-Package
+
+This repository also includes a **pure Swift sub-package**, located in the `Trade` directory. The sub-package is designed for maximum portability and compatibility with all Swift-supported platforms.
+
+### Key Highlights of the Sub-Package:
+- **Name**: `TradeApp`
+- **Modules**:
+  - `Brokerage`: Handles broker interactions and integrations.
+  - `Persistence`: Manages storage and caching.
+  - `Runtime`: Provides the core runtime logic.
+  - `TradeInterface`: Powers the user interface components.
+  - `TradeCLI`: CLI tool for managing and analyzing trade data.
+- **Foundation-Based**: The sub-package builds upon the Foundation framework for cross-platform compatibility.
+- **Targets**:
+  - A **library** target (`TradeInterface`) for integrating with other projects.
+  - An **executable** target (`TradeCLI`) for command-line operation.
+
+The sub-package is self-contained and can be used independently as a Swift Package by importing it into your own projects.
+
+---
+
+## CLI Tool
+
+TradeUI includes a command-line interface (CLI) for accessing key features programmatically.
+
+### Features
+- Fetch and display trade data.
+- Simulate and test trading strategies.
+- Export trade data to JSON or CSV formats.
+
+### Usage
+1. Navigate to the CLI target:
+    ```bash
+    cd Trade
+    ```
+2. Build the CLI:
+    ```bash
+    swift build
+    ```
+3. Run the CLI:
+    ```bash
+    .build/debug/TradeCLI --help
+    ```
+
+#### Output
+```
+Trade % swift run TradeCLI help
+Building for debugging...
+[1/1] Write swift-version--4143C679E9773007.txt
+Build of product 'TradeCLI' complete! (0.49s)
+TradeWithIt: A command-line interface for TradeApp
+TradeWithIt enables algorithmic trading by integrating market analysis tools and trading strategies. It leverages:
+- TradeUI: Provides market data and analysis tools for stocks and options, powered by APIs and AI-driven insights.
+  Learn more: https://github.com/TradeWithIt/TradeUI
+- Strategy: Implements trading strategies for automated trade execution.
+  Learn more: https://github.com/TradeWithIt/Strategy
+
+Usage:
+  TradeWithIt <subcommand> [options]
+
+Subcommands:
+  help    Display this help information
+  trade   Execute a trading strategy with an instrument (type, symbol, exchange, currency)
+
+For detailed help on a subcommand, run:
+  TradeWithIt <subcommand> --help
+  
+Trade Subcommand Arguments:
+  <strategyFile>    Path to the .dylib file containing the trading strategy
+  <type>            Instrument type (default: FUT)
+  <symbol>          Trading symbol (default: ESM5)
+  <interval>        Market data interval in seconds (default: 60)
+  <exchange>        Exchange ID (default: CME)
+  <currency>        Currency (default: USD)
+  --verbose, -v     Enable verbose output for trade details
+
+Examples:
+  TradeWithIt trade /path/to/strategy.dylib FUT ESM5 60 CME USD
+  TradeWithIt trade /path/to/strategy.dylib --verbose
+  TradeWithIt help
+  TradeWithIt trade --help
+
+For detailed help on a subcommand, run:
+  TradeWithIt <subcommand> --help
+
 ```
 
-✔️ This setup ensures that your strategy package will generate a .dylib file that TradeUI can dynamically load.
+---
 
-⸻
+## Incorporating Your Own Strategies
 
-Step 2: Implement Your Strategy
+TradeUI is designed to integrate custom trading strategies seamlessly. The **[Strategy](https://github.com/TradeWithIt/Strategy)** package provides a framework for creating, testing, and deploying custom strategies.
 
-Inside your strategy package, implement your trading logic.
-```swift
-import Foundation
-import TradingStrategy
+### Steps to Add Your Strategy
+1. Clone the **Strategy** repository:
+    ```bash
+    git clone https://github.com/TradeWithIt/Strategy.git
+    ```
+2. Implement your strategy following the guidelines in the repository.
+3. Link your strategy to TradeUI by updating the `Package.swift` file:
+    ```swift
+    .package(url: "https://github.com/your_username/YourStrategy.git", branch: "main"),
+    ```
 
-public struct ORBStrategy: Strategy {
-    public var charts: [[Klines]] = []
-    public var resolution: [Scale] = []
-    public var distribution: [[Phase]] = []
-    public var indicators: [[String: [Double]]] = []
-    public var levels: [Level] = []
-    public var patternIdentified: Bool = false
-    public var patternInformation: [String: Bool] = [:]
+### Build your strategy as `dynamic lib` file, and select it's folder location from the **TradeUI** app. 
 
-    public init(candles: [Klines]) {
-        self.charts = [candles]
-    }
+---
 
-    public func unitCount(entryBar: Klines, equity: Double, feePerUnit cost: Double) -> Int {
-        return 10
-    }
+## Legal Disclaimer, License, and Contribution
 
-    public func adjustStopLoss(entryBar: Klines) -> Double? {
-        return nil
-    }
+### Legal Disclaimer
+TradeUI is provided for educational and informational purposes only. **It is not intended for live trading**, and the maintainers are not responsible for any financial losses.
 
-    public func shouldExit(entryBar: Klines) -> Bool {
-        return false
-    }
-}
-```
+### License
+This project is licensed under the **MIT License**. View the [LICENSE](./LICENSE) file for more details.
 
-⸻
+### Contribution
+Contributions are welcome! To contribute:
+1. Fork the repository.
+2. Create a feature branch.
+3. Submit a pull request with a detailed description of your changes.
 
-Step 3: Expose Strategies to TradeUI
-
-To allow TradeUI to discover and load your strategy, you must provide C-compatible function exports:
-```swift
-import Foundation
-import TradingStrategy
-
-@_cdecl("getAvailableStrategies")
-public func getAvailableStrategies() -> UnsafeMutablePointer<CChar> {
-    let strategyList = ["ORB"].joined(separator: ",")
-    return strdup(strategyList)!
-}
-
-@_cdecl("createStrategy")
-public func createStrategy(strategyName: UnsafePointer<CChar>) -> UnsafeRawPointer? {
-    let name = String(cString: strategyName)
-    
-    let factory: () -> Strategy = {
-        switch name {
-        case "ORB":
-            return ORBStrategy(candles: [])
-        default:
-            return ORBStrategy(candles: [])
-        }
-    }
-
-    let boxedFactory = Box(factory)
-    return UnsafeRawPointer(Unmanaged.passRetained(boxedFactory).toOpaque())
-}
-
-// Helper class for memory management
-class Box<T> {
-    let value: T
-    init(_ value: T) { self.value = value }
-}
-```
-
-⸻
-
-Step 4: Compile and Add Your Strategy to TradeUI
-
-1️⃣ Build your strategy package:
-```
-swift build -c release
-```
-2️⃣ Locate the .dylib file inside .build/release/
-3️⃣ Copy it to TradeUI’s strategy directory:
-```
-cp .build/release/libMyStrategyPackage.dylib ~/Downloads/Strategies/
-```
-4️⃣ Restart TradeUI.
-
-⸻
-
-📌 Legal Disclaimer
-
-⚠️ IMPORTANT NOTICE:
-	•	TradeUI and its related repositories do not provide financial, investment, or trading advice.
-	•	This software is provided as-is, without any warranty of any kind.
-	•	You are solely responsible for any trading decisions or financial losses that may result from using this software.
-	•	The maintainers and contributors of this repository are not liable for any damages, direct or indirect, arising from the use of TradeUI.
-	•	Trading involves significant risk, and past performance does not guarantee future results.
-
-By using this software, you acknowledge that you have read and understood this disclaimer and agree to use it at your own risk.
-
-⸻
-
-📌 Installation
-
-To set up TradeUI, clone the repository and install dependencies:
-```
-$ git clone https://github.com/TradeWithIt/TradeUI.git
-$ cd TradeUI
-$ swift build
-```
-Running in CLI Mode
-```
-$ swift run TradeUI --cli
-```
-
-⸻
-
-📌 Contribution
-
-We welcome contributions! Please submit issues and pull requests to improve TradeUI.
-
-⸻
-
-📌 License
-
-TradeUI is released under the MIT License.
-Please see the LICENSE file for more details.
-
-🚀 **Now you can create, compile, and add your own trading strategies to TradeUI!** 🔥📈
+For suggestions or issues, open a new issue in this repository.

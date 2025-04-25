@@ -56,8 +56,14 @@ public final class Watcher: @unchecked Sendable, Identifiable {
         self.tradeAggregator = tradeAggregator
         
         self.watcherState = WatcherStateActor(initialStrategy: strategyType.init(candles: []))
-        self.quoteTask = Task { await self.setupMarketQuoteData(market: marketData) }
-        self.marketDataTask = Task { await self.setupMarketData(marketData: marketData, fileProvider: fileProvider) }
+        self.quoteTask = Task { [weak self, marketData] in
+            guard let self else { return }
+            await self.setupMarketQuoteData(market: marketData)
+        }
+        self.marketDataTask = Task { [weak self, marketData] in
+            guard let self else { return }
+            await self.setupMarketData(marketData: marketData, fileProvider: fileProvider)
+        }
         
         fetchTredingHours(marketData: marketData)
     }
@@ -106,7 +112,7 @@ public final class Watcher: @unchecked Sendable, Identifiable {
     }
     
     public func saveCandles(fileProvider: CandleFileProvider) {
-        Task {
+        Task { [fileProvider] in
             let strategy = await watcherState.getStrategy()
             guard !strategy.candles.isEmpty else { return }
             snapshotData(fileProvider: fileProvider, candles: strategy.candles)
@@ -114,7 +120,7 @@ public final class Watcher: @unchecked Sendable, Identifiable {
     }
     
     public func fetchTredingHours(marketData: MarketData) {
-        Task {
+        Task { [marketData] in
             let hours = try await marketData.tradingHour(contract)
             await watcherState.updateTradingHours(hours)
         }
@@ -122,8 +128,8 @@ public final class Watcher: @unchecked Sendable, Identifiable {
     
     private func setupMarketQuoteData(market: MarketData) async {
         do {
-            var latestQuote: Quote?
-            for await newQuote in try market.quotePublisher(contract: contract).values {
+            for await newQuote in try market.quotePublisher(contract: contract) {
+                var latestQuote: Quote?
                 let quote = await watcherState.getQuote()
                 if var existingQuote = latestQuote ?? quote {
                     switch newQuote.type {
@@ -145,9 +151,9 @@ public final class Watcher: @unchecked Sendable, Identifiable {
                         volume: newQuote.type == .volume ? newQuote.value : nil
                     )
                 }
-            }
-            if let updatedQuote = latestQuote {
-                await watcherState.updateQuote(updatedQuote)
+                if let updatedQuote = latestQuote {
+                    await watcherState.updateQuote(updatedQuote)
+                }
             }
         } catch {
             print("Quote stream error: \(error)")
@@ -163,7 +169,7 @@ public final class Watcher: @unchecked Sendable, Identifiable {
                 contract: contract,
                 interval: interval,
                 userInfo: updatedUserInfo
-            ).values {
+            ) {
                 if Task.isCancelled { break }
                 let isSimulation = marketData is MarketDataFileProvider
                 

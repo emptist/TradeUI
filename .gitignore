@@ -116,3 +116,4 @@ playground.xcworkspace
 .vscode/
 result.xml
 Trade/.build
+Trade/Sources/Runtime/Strategy/StrategyImp

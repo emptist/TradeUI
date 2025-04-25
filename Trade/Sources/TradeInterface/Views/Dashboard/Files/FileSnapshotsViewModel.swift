@@ -1,6 +1,5 @@
 import Foundation
 import SwiftUI
-import Combine
 import Brokerage
 import Runtime
 
@@ -32,7 +31,6 @@ extension FileSnapshotsView {
             }
         }
         
-        private var cancellables = Set<AnyCancellable>()
         var fileTree: [FileNode] = []
         var isPresentingSheet: PresentedSheetType? = nil
         var selectedSnapshot: FileNode? {
@@ -78,17 +76,12 @@ extension FileSnapshotsView {
             return FileNode(name: url.lastPathComponent, url: url, isDirectory: true, children: children.isEmpty ? nil : children)
         }
         
-        deinit {
-            cancellables.forEach { $0.cancel() }
-            cancellables.removeAll()
-        }
-        
         func saveHistoryToFile(
             contract: any Contract,
             interval: TimeInterval,
             market: Market?,
             fileProvider: MarketDataFileProvider
-        ) throws {
+        ) async throws {
             let calendar = Calendar.current
             let timeZone = TimeZone.current
 
@@ -107,31 +100,35 @@ extension FileSnapshotsView {
             endDateComponents.month = 11
             endDateComponents.day = 8
             endDateComponents.timeZone = timeZone
-            // Create the end date
-            let endDate = calendar.date(from: endDateComponents)!
+
+            guard
+                // Create the end date
+                let endDate = calendar.date(from: endDateComponents),
+                let stream = try market?.marketDataSnapshot(
+                    contract: contract,
+                    interval: interval,
+                    startDate: startDate,
+                    endDate: endDate,
+                    userInfo: [:]
+                )
+            else {
+                print("Market stream not available")
+                return
+            }
             
-            try market?.marketDataSnapshot(
-                contract: contract,
-                interval: interval,
-                startDate: startDate,
-                endDate: endDate,
-                userInfo: [:]
-            )
-            .receive(on: DispatchQueue.global())
-            .sink(receiveCompletion: { completion in
-                if case .failure(let error) = completion {
-                    print("🔴 errorMessage: ", error)
-                }
-                print("saved history snapshot to file")
-            }, receiveValue: { candleData in
+            for try await candleData in stream {
                 do {
                     print("Saving data to file:", candleData.bars.count)
-                    try fileProvider.save(symbol: candleData.symbol, interval: candleData.interval, bars: candleData.bars, strategyName: "")
+                    try fileProvider.save(
+                        symbol: candleData.symbol,
+                        interval: candleData.interval,
+                        bars: candleData.bars,
+                        strategyName: ""
+                    )
                 } catch {
-                    print("Something went wrong", error)
+                    print("Something went wrong:", error)
                 }
-            })
-            .store(in: &cancellables)
+            }
         }
     }
 }

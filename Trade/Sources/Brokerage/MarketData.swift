@@ -1,5 +1,4 @@
 import Foundation
-import Combine
 
 public enum MarketDataKey: String {
     case bufferInfo = "buffer"
@@ -9,7 +8,9 @@ public enum MarketDataKey: String {
 public protocol MarketData: Sendable {
     init()
     /// Connect Service
-    func connect() throws
+    func connect() async throws
+    func disconnect() async throws
+    
     var account: Account? { get }
     /// Requests price history with continues real time updates for asset.
     /// - Parameters:
@@ -20,7 +21,7 @@ public protocol MarketData: Sendable {
         contract product: any Contract,
         interval: TimeInterval,
         userInfo: [String: Any]
-    ) throws -> AnyPublisher<CandleData, Never>
+    ) throws -> AsyncStream<CandleData>
     /// Requests price history snapshot with continues real time updates for asset symbol
     func marketDataSnapshot(
         contract product: any Contract,
@@ -28,12 +29,12 @@ public protocol MarketData: Sendable {
         startDate: Date,
         endDate: Date?,
         userInfo: [String: Any]
-    ) throws -> AnyPublisher<CandleData, Never>
+    ) throws -> AsyncStream<CandleData>
     /// Cancel real time market data updates
     /// - Parameters:
     ///   - symbol: Asset symbol
     ///   - interval: Bar interval
     func unsubscribeMarketData(contract: any Contract, interval: TimeInterval)
-    func quotePublisher(contract product: any Contract) throws -> AnyPublisher<Quote, Never>
+    func quotePublisher(contract product: any Contract) throws -> AsyncStream<Quote>
     func tradingHour(_ product: any Contract) async throws -> [TradingHour]
 }
