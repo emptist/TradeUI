@@ -3,7 +3,8 @@ import Foundation
 public protocol MarketOrder: Sendable {
     init()
     /// Connect Service
-    func connect() throws
+    func connect() async throws
+    func disocnnect() async throws
     var account: Account? { get }
     
     /// Retrieve All Active Orders

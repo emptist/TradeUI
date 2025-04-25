@@ -1,5 +1,4 @@
 import Foundation
-import Combine
 import IBKit
 
 public class InteractiveBrokers: @unchecked Sendable, Market {
@@ -22,17 +21,7 @@ public class InteractiveBrokers: @unchecked Sendable, Market {
 //    let client = IBClient.paper(id: 0, type: .gateway)
     let client = IBClient.paper(id: 0, type: .gateway)
     private let queue = DispatchQueue(label: "InteractiveBrokers.syncQueue", attributes: .concurrent)
-    private var _subscriptions: [AnyCancellable] = []
     private var _accounts: [String: Account] = [:]
-    
-    public var subscriptions: [AnyCancellable] {
-        get {
-            queue.sync { _subscriptions }
-        }
-        set {
-            queue.async(flags: .barrier) { self._subscriptions = newValue }
-        }
-    }
     
     public var accounts: [String: Account] {
         get {
@@ -66,48 +55,59 @@ public class InteractiveBrokers: @unchecked Sendable, Market {
         return orderID
     }
     
-    private var unsubscribeMarketData: Set<Asset> = []
-    private var unsubscribeQuote: Set<IBContract> = []
-    
-    deinit {
-        _subscriptions.forEach { $0.cancel() }
-        _subscriptions.removeAll()
-        client.disconnect()
+    private var _unsubscribeMarketData: Set<Asset> = []
+    private var _unsubscribeQuote: Set<IBContract> = []
+    private let unsubscribeQueue = DispatchQueue(label: "IB.unsubscribe.sync", attributes: .concurrent)
+
+    private var unsubscribeMarketData: Set<Asset> {
+        get { unsubscribeQueue.sync { _unsubscribeMarketData } }
+        set { unsubscribeQueue.async(flags: .barrier) { self._unsubscribeMarketData = newValue } }
+    }
+
+    private var unsubscribeQuote: Set<IBContract> {
+        get { unsubscribeQueue.sync { _unsubscribeQuote } }
+        set { unsubscribeQueue.async(flags: .barrier) { self._unsubscribeQuote = newValue } }
     }
     
     required public init() {
-        client.eventFeed.sink {[weak self] anyEvent in
+        Task { [weak self] in
             guard let self else { return }
-            switch anyEvent {
-            case let event as IBManagedAccounts:
-                event.identifiers.forEach { accountId in
-                    self.startListening(accountId: accountId)
+            for await anyEvent in await self.client.eventFeed {
+                switch anyEvent {
+                case let event as IBManagedAccounts:
+                    event.identifiers.forEach { accountId in
+                        self.startListening(accountId: accountId)
+                    }
+                case let event as IBAccountSummary:
+                    self.updateAccountData(event: event)
+                case let event as IBAccountUpdate:
+                    self.updateAccountData(event: event)
+                case let event as IBPosition:
+                    self.updatePositions(event)
+                case let event as IBPositionPNL:
+                    self.updatePositions(event)
+                case let event as IBPortfolioValue:
+                    self.updatePortfolio(event)
+                case let event as OrderEvent:
+                    self.updateAccountOrders(event: event)
+                default:
+                    break
                 }
-            case let event as IBAccountSummary:
-                self.updateAccountData(event: event)
-            case let event as IBAccountUpdate:
-                self.updateAccountData(event: event)
-            case let event as IBPosition:
-                self.updatePositions(event)
-            case let event as IBPositionPNL:
-                self.updatePositions(event)
-            case let event as IBPortfolioValue:
-                self.updatePortfolio(event)
-            case let event as OrderEvent:
-                self.updateAccountOrders(event: event)
-            default:
-                break
             }
         }
-        .store(in: &subscriptions)
     }
     
-    public func connect() throws {
+    public func connect() async throws {
         do {
-            try client.connect()
+            try await client.connect()
         } catch {
             print("🔴 failed to connect to Interactive Brokers:", error)
+            throw error
         }
+    }
+    
+    public func disocnnect() async throws {
+        await client.disconnect()
     }
     
     func contract(_ product: any Contract) -> IBContract {
@@ -145,7 +145,7 @@ public class InteractiveBrokers: @unchecked Sendable, Market {
         contract product: any Contract,
         interval: TimeInterval,
         userInfo: [String: Any]
-    ) throws -> AnyPublisher<CandleData, Never> {
+    ) throws -> AsyncStream<CandleData> {
         let contract = self.contract(product)
         let buffer = userInfo[MarketDataKey.bufferInfo.rawValue] as? TimeInterval ?? interval
         let barSize = IBBarSize(timeInterval: interval)
@@ -164,7 +164,7 @@ public class InteractiveBrokers: @unchecked Sendable, Market {
         startDate: Date,
         endDate: Date? = nil,
         userInfo: [String: Any]
-    ) throws -> AnyPublisher<CandleData, Never> {
+    ) throws -> AsyncStream<CandleData> {
         try historicBarPublisher(
             contract: self.contract(product),
             barSize: IBBarSize(timeInterval: interval),
@@ -189,33 +189,10 @@ public class InteractiveBrokers: @unchecked Sendable, Market {
     private func contractDetails(_ product: any Contract) async throws -> IBContractDetails {
         let requestID = client.nextRequestID
         let request = IBContractDetailsRequest(requestID: requestID, contract: self.contract(product))
-        try client.send(request: request)
-
-        return try await withCheckedThrowingContinuation { continuation in
-            var subscription: AnyCancellable?
-
-            subscription = self.client.eventFeed
-                .setFailureType(to: Swift.Error.self)
-                .compactMap { $0 as? IBIndexedEvent }
-                .filter { $0.requestID == requestID }
-                .compactMap { $0 as? IBContractDetails }
-                .sink(
-                    receiveCompletion: { completion in
-                        self.subscriptions.removeAll { $0 === subscription }
-                        if case .failure(let error) = completion {
-                            continuation.resume(throwing: error)
-                        }
-                    },
-                    receiveValue: { value in
-                        self.subscriptions.removeAll { $0 === subscription }
-                        continuation.resume(returning: value)
-                    }
-                )
-
-            if let sub = subscription {
-                self.subscriptions.append(sub)
-            }
+        for await event: IBContractDetails in try await client.stream(request: request) {
+            return event
         }
+        throw TradeError.somethingWentWrong("No contract details received")
     }
     
     // MARK: Private IB Type handling
@@ -229,58 +206,54 @@ public class InteractiveBrokers: @unchecked Sendable, Market {
         contract: IBContract,
         barSize size: IBBarSize,
         duration: DateInterval
-    ) throws -> AnyPublisher<CandleData, Never> {
+    ) throws -> AsyncStream<CandleData> {
         let symbol = contract.localSymbol ?? contract.symbol
         let interval: TimeInterval = size.timeInterval
         let requestID = client.nextRequestID
-        
-        let publisher = client.eventFeed
-            .compactMap { $0 as? IBIndexedEvent }
-            .filter { $0.requestID == requestID }
-            .compactMap {[weak self] response -> CandleData? in
-                let asset = Asset(contract: contract, interval: interval)
-                if let data = self?.unsubscribeMarketData, data.contains(asset) {
-                    self?.unsubscribeMarketData.remove(asset)
-                    self?.unsubscribeQuote.insert(contract)
-                    self?.unsubscribeMarketData(requestID)
-                    return nil
-                }
-                
-                switch response {
-                case let event as IBPriceHistory:
-                    return CandleData(
-                        symbol: symbol,
-                        interval: interval,
-                        bars: event.prices
+        let request = IBPriceHistoryRequest(
+            requestID: requestID,
+            contract: contract,
+            size: size,
+            source: .trades,
+            lookback: duration,
+            extendedTrading: false
+        )
+
+        return AsyncStream { continuation in
+            Task {
+                let stream = await client.eventFeed
+                try client.send(request: request)
+                for await event in stream {
+                    guard
+                        let event = event as? IBIndexedEvent,
+                        event.requestID == request.requestID
+                    else { continue }
+                    
+                    let asset = Asset(contract: contract, interval: interval)
+                    if unsubscribeMarketData.contains(asset) {
+                        unsubscribeMarketData.remove(asset)
+                        unsubscribeQuote.insert(contract)
+                        unsubscribeMarketData(requestID)
+                        break
+                    }
+                    switch event {
+                    case let event as IBPriceHistory:
+                        let bars = event.prices
                             .sorted { $0.date < $1.date }
                             .map { Bar(bar: $0, interval: interval) }
-                    )
-                case let event as IBPriceBarUpdate:
-                    return CandleData(
-                        symbol: symbol,
-                        interval: interval,
-                        bars: [Bar(bar: event.bar, interval: interval)]
-                    )
-                case let event as IBServerError:
-                    print("Error: \(event.message)")
-                    return nil
-                default:
-                    print("Unexpected event: \(response)")
-                    return nil
+                        continuation.yield(CandleData(symbol: symbol, interval: interval, bars: bars))
+                    case let event as IBPriceBarUpdate:
+                        let bar = Bar(bar: event.bar, interval: interval)
+                        continuation.yield(CandleData(symbol: symbol, interval: interval, bars: [bar]))
+                    case let error as IBServerError:
+                        print("Error: \(error.message)")
+                    default:
+                        continue
+                    }
                 }
+                continuation.finish()
             }
-            .eraseToAnyPublisher()
-        
-        try client.requestPriceHistory(
-            requestID,
-            contract: contract,
-            barSize: size,
-            barSource: IBBarSource.trades,
-//            barSource: IBBarSource.aggTrades,
-            lookback: duration
-        )
-        
-        return publisher
+        }
     }
     
     // MARK: Market Order
@@ -331,40 +304,39 @@ public class InteractiveBrokers: @unchecked Sendable, Market {
     /// - Parameters:
     /// - contract: security description
     /// - extendedSession: include data from extended trading hours
-    public func quotePublisher(contract product: any Contract) throws -> AnyPublisher<Quote, Never> {
+    public func quotePublisher(contract product: any Contract) throws -> AsyncStream<Quote> {
         let requestID = client.nextRequestID
         let contract = self.contract(product)
-        let publisher =  client.eventFeed
-            .compactMap { $0 as? IBIndexedEvent }
-            .filter { $0.requestID == requestID }
-            .compactMap {[weak self] response -> Quote? in
-                if let self, self.unsubscribeQuote.contains(contract) {
-                    self.unsubscribeQuote(requestID)
-                    self.unsubscribeQuote.remove(contract)
-                }
-                
-                switch response {
-                case let event as IBTick:
-                    return Quote(tick: event, contract: contract)
-                case let event as IBServerError:
-                    print("Error: \(event.message)")
-                    return nil
-                default:
-                    return nil
-                }
-            }
-            .eraseToAnyPublisher()
-        
         let request = IBMarketDataRequest(requestID: requestID, contract: contract)
-        try client.send(request: request)
-        return publisher
+        
+        return AsyncStream {[weak self] continuation in
+            guard let self else {
+                continuation.finish()
+                return
+            }
+            Task { [weak self] in
+                guard let self else {
+                    continuation.finish()
+                    return
+                }
+                let stream: AsyncStream<IBTick> = try await self.client.stream(request: request)
+                for await event in stream {
+                    if self.unsubscribeQuote.contains(contract) {
+                        self.unsubscribeQuote(requestID)
+                        self.unsubscribeQuote.remove(contract)
+                    }
+                    if let quote = Quote(tick: event, contract: contract) {
+                        continuation.yield(quote)
+                    }
+                }
+                continuation.finish()
+            }
+        }
     }
 }
 
-extension IBContractDetails: @retroactive @unchecked Sendable {}
 extension IBContract: @retroactive Hashable {}
 extension IBContract: @retroactive Equatable {}
-extension IBContract: @retroactive @unchecked Sendable {}
 extension IBContract: Contract {
     public var type: String {
         self.securitiesType.rawValue

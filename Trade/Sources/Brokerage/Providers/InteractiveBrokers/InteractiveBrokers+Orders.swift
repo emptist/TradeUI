@@ -1,60 +1,21 @@
 import Foundation
-import Combine
 import IBKit
 
 extension InteractiveBrokers {
-    @discardableResult
-    func limitWithTrailingStopOrder(
-        contract: IBContract,
-        action: IBAction,
-        price: Double,
-        trailStopPrice: Double,
-        quantity: Double
-    ) throws -> AnyPublisher<any OrderEvent, Swift.Error> {
-        guard let account = account?.name else { throw TradeError.requestError("Missing account identifier")}
-        //This will be our main or "parent" order
-        var limitOrder = IBOrder.limit(
-            price, action: action, quantity: quantity, contract: contract, account: account
-        )
-        limitOrder.orderID = nextOrderID
-        //The parent and children orders will need this attribute set to false to prevent accidental executions.
-        //The LAST CHILD will have it set to true,
-        limitOrder.transmit = false
-        
-        var stopOrder = IBOrder.trailingStop(
-            stop: trailStopPrice,
-            limit: price,
-            action: action == .buy ? .sell: .buy,
-            quantity: quantity,
-            contract: contract,
-            account: account
-        )
-        stopOrder.orderID = nextOrderID
-        stopOrder.parentId = limitOrder.orderID
-        //In this case, the low side order will be the last child being sent. Therefore, it needs to set this attribute to true
-        //to activate all its predecessors
-        stopOrder.transmit = true
-        return try placeOrder(limitOrder)
-            .merge(with: try placeOrder(stopOrder))
-            .eraseToAnyPublisher()
-    }
-    
-    @discardableResult
     func limitOrder(
         contract: IBContract,
         action: IBAction,
         price: Double,
         quantity: Double
-    ) throws -> AnyPublisher<any OrderEvent, Swift.Error> {
-        guard let account = account?.name else { throw TradeError.requestError("Missing account identifier")}
-        var limitOrder = IBOrder.limit(
-            price, action: action, quantity: quantity, contract: contract, account: account
-        )
-        limitOrder.orderID = nextOrderID
-        return try placeOrder(limitOrder)
+    ) throws -> AsyncStream<any OrderEvent> {
+        guard let account = account?.name else {
+            throw TradeError.requestError("Missing account identifier")
+        }
+        var order = IBOrder.limit(price, action: action, quantity: quantity, contract: contract, account: account)
+        order.orderID = nextOrderID
+        return try streamOrder(order)
     }
     
-    @discardableResult
     func trailingStopOrder(
         contract: IBContract,
         action: IBAction,
@@ -62,97 +23,100 @@ extension InteractiveBrokers {
         price: Double,
         trailStopPrice: Double,
         quantity: Double
-    ) throws -> AnyPublisher<any OrderEvent, Swift.Error> {
-        guard let account = account?.name else { throw TradeError.requestError("Missing account identifier")}
-        var stopOrder = IBOrder.trailingStop(
-            stop: trailStopPrice,
-            limit: price,
-            action: action,
-            quantity: quantity,
-            contract: contract,
-            account: account
-        )
-        stopOrder.orderID = nextOrderID
-        stopOrder.parentId = parentOrderId
-        return try placeOrder(stopOrder)
+    ) throws -> AsyncStream<any OrderEvent> {
+        guard let account = account?.name else {
+            throw TradeError.requestError("Missing account identifier")
+        }
+        var order = IBOrder.trailingStop(stop: trailStopPrice, limit: price, action: action, quantity: quantity, contract: contract, account: account)
+        order.orderID = nextOrderID
+        order.parentId = parentOrderId
+        return try streamOrder(order)
     }
     
-    /// sends order to broker
-    private func placeOrder(_ order: IBOrder) throws -> AnyPublisher<any OrderEvent, Swift.Error> {
-        let requestID = client.nextRequestID
-        let publisher =  client.eventFeed
-            .setFailureType(to: Swift.Error.self)
-            .compactMap { $0 as? IBIndexedEvent }
-            .filter { $0.requestID == requestID }
-            .tryMap { response -> OrderEvent in
-                switch response {
-                case let event as OrderEvent:
-                    return event
-                case let event as IBServerError:
-                    throw TradeError.requestError(event.message)
-                default:
-                    let message = "thsi should never happen but received anyway \(response)"
-                    throw TradeError.somethingWentWrong(message)
-                }
-            }
-            .eraseToAnyPublisher()
-        
-        try client.placeOrder(order.orderID, order: order)
-        return publisher
-    }
-    
-    @discardableResult
-    func placeIBAlgoExitOrders(
-        contract product: any Contract,
-        isLong: Bool,
-        entryPrice: Double,
+    func limitWithTrailingStopOrder(
+        contract: IBContract,
+        action: IBAction,
+        price: Double,
         trailStopPrice: Double,
-        takeProfitPrice: Double,
         quantity: Double
-    ) throws -> AnyPublisher<any OrderEvent, Swift.Error> {
-        guard let account = account?.name else { throw TradeError.requestError("Missing account identifier") }
-        let contract = self.contract(product)
-        let exitOCAGroup = UUID().uuidString
+    ) throws -> AsyncStream<any OrderEvent> {
+        guard let account = account?.name else {
+            throw TradeError.requestError("Missing account identifier")
+        }
         
-        var limitOrder = IBOrder.limit(
-            entryPrice, action: isLong ? .buy : .sell, quantity: quantity, contract: contract, account: account
-        )
+        let group = UUID().uuidString
+        
+        var limitOrder = IBOrder.limit(price, action: action, quantity: quantity, contract: contract, account: account)
         limitOrder.orderID = nextOrderID
         limitOrder.transmit = false
         
         var stopOrder = IBOrder.trailingStop(
             stop: trailStopPrice,
-            limit: entryPrice,
-            action: isLong ? .sell : .buy,
+            limit: price,
+            action: action == .buy ? .sell : .buy,
             quantity: quantity,
             contract: contract,
             account: account
         )
-        stopOrder.parentId = limitOrder.orderID
         stopOrder.orderID = nextOrderID
-        stopOrder.ocaGroup = exitOCAGroup
-        stopOrder.transmit = false
+        stopOrder.parentId = limitOrder.orderID
+        stopOrder.ocaGroup = group
+        stopOrder.transmit = true
         
-        var takeProfitOrder = IBOrder.limit(
-            takeProfitPrice,
-            action: isLong ? .sell : .buy,
-            quantity: quantity,
-            contract: contract,
-            account: account
-        )
-        takeProfitOrder.parentId = limitOrder.orderID
-        takeProfitOrder.orderID = nextOrderID
-        takeProfitOrder.ocaGroup = exitOCAGroup
-        takeProfitOrder.transmit = true
+        return AsyncStream { continuation in
+            let task1 = Task { [limitOrder] in
+                let stream = try streamOrder(limitOrder)
+                for try await event in stream {
+                    continuation.yield(event)
+                }
+            }
+
+            let task2 = Task { [stopOrder] in
+                let stream = try streamOrder(stopOrder)
+                for try await event in stream {
+                    continuation.yield(event)
+                }
+            }
+
+            continuation.onTermination = { _ in
+                task1.cancel()
+                task2.cancel()
+            }
+
+            Task {
+                _ = await task1.result
+                _ = await task2.result
+                continuation.finish()
+            }
+        }
+    }
+    
+    private func streamOrder(_ order: IBOrder) throws -> AsyncStream<any OrderEvent> {
+        let requestID = client.nextRequestID
+        try client.placeOrder(requestID, order: order)
         
-        return try placeOrder(limitOrder)
-            .merge(with: try placeOrder(stopOrder))
-            .merge(with: try placeOrder(takeProfitOrder))
-            .eraseToAnyPublisher()
+        return AsyncStream { continuation in
+            Task {
+                for await event in await client.eventFeed {
+                    guard let indexed = event as? IBIndexedEvent, indexed.requestID == requestID else { continue }
+                    
+                    switch indexed {
+                    case let event as OrderEvent:
+                        continuation.yield(event)
+                    case let event as IBServerError:
+                        print("❌ Order error: \(event.message)")
+                        continuation.finish()
+                        return
+                    default: continue
+                    }
+                }
+                continuation.finish()
+            }
+        }
     }
 }
 
-public protocol OrderEvent{}
+public protocol OrderEvent: Sendable {}
 extension IBOrder: OrderEvent {}
 extension IBOpenOrder: OrderEvent {}
 extension IBOpenOrderEnd: OrderEvent {}
@@ -162,7 +126,6 @@ extension IBOrderExecutionEnd: OrderEvent {}
 extension IBOrderCompletion: OrderEvent {}
 extension IBOrderCompetionEnd: OrderEvent {}
 
-extension IBOrder: @retroactive @unchecked Sendable {}
 extension IBOrder: Order {
     public var symbol: String {  contract.localSymbol ?? contract.symbol }
     public var orderAction: OrderAction { self.action == .buy ? .buy : .sell }

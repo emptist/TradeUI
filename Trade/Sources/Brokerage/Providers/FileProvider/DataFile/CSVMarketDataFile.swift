@@ -1,9 +1,8 @@
 import Foundation
-import Combine
 
 public final class CSVMarketDataFile: @unchecked Sendable, MarketDataFile {
     public let fileUrl: URL
-    private let subject = PassthroughSubject<CandleData, Never>()
+    private var continuation: AsyncStream<CandleData>.Continuation?
     private var fileHandle: FileHandle?
     private var symbol: String = ""
     private var barInterval: TimeInterval = 60
@@ -17,12 +16,12 @@ public final class CSVMarketDataFile: @unchecked Sendable, MarketDataFile {
     public func close() {
         fileHandle?.closeFile()
         fileHandle = nil
-        subject.send(completion: .finished)
+        continuation?.finish()
     }
     
     public func publish() {
         guard let fileHandle = fileHandle else {
-            subject.send(completion: .finished)
+            continuation?.finish()
             return
         }
 
@@ -52,46 +51,41 @@ public final class CSVMarketDataFile: @unchecked Sendable, MarketDataFile {
                 volume: volume
             )
             interval += barInterval
-            subject.send(CandleData(symbol: symbol, interval: barInterval, bars: [bar]))
+            continuation?.yield(CandleData(symbol: symbol, interval: barInterval, bars: [bar]))
         } else {
             fileHandle.closeFile()
             self.interval = 0
             self.fileHandle = nil
-            subject.send(completion: .finished)
+            continuation?.finish()
         }
     }
     
-    public func readBars(symbol: Symbol, interval: TimeInterval, loadAllAtOnce: Bool = false) throws -> AnyPublisher<CandleData, Never> {
-        guard FileManager.default.fileExists(atPath: fileUrl.path) else {
-            print("Error: CSV file does not exist at \(fileUrl.path)")
-            subject.send(completion: .finished)
-            return subject.eraseToAnyPublisher()
-        }
-        
-        self.symbol = symbol
-        self.barInterval = interval
-        
-        if loadAllAtOnce {
-            if let data = loadCandleData() {
-                subject.send(data)
-            }
-            subject.send(completion: .finished)
-        } else {
-            do {
-                fileHandle = try FileHandle(forReadingFrom: fileUrl)
-                print("File opened successfully: \(fileUrl.path)")
-                _ = fileHandle?.readLine() // Skip header line
-            } catch {
-                print("Error reading CSV file: \(error)")
-                subject.send(completion: .finished)
-            }
-            Task {
-                try await Task.sleep(for: .milliseconds(200))
-                await MainActor.run { publish() }
+    public func readBars(symbol: Symbol, interval: TimeInterval, loadAllAtOnce: Bool = false) throws -> AsyncStream<CandleData> {
+        return AsyncStream { continuation in
+            self.continuation = continuation
+            self.symbol = symbol
+            self.barInterval = interval
+
+            if loadAllAtOnce {
+                if let data = self.loadCandleData() {
+                    continuation.yield(data)
+                }
+                continuation.finish()
+            } else {
+                do {
+                    self.fileHandle = try FileHandle(forReadingFrom: self.fileUrl)
+                    _ = self.fileHandle?.readLine() // Skip header
+                } catch {
+                    print("Failed to open file: \(error)")
+                    continuation.finish()
+                    return
+                }
+                Task {
+                    try await Task.sleep(for: .milliseconds(200))
+                    await MainActor.run { self.publish() }
+                }
             }
         }
-        
-        return subject.eraseToAnyPublisher()
     }
     
     public func save(strategyName: String, candleData: CandleData) {
