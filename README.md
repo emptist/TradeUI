@@ -1,7 +1,7 @@
 # **TradeUI**
 
-![Swift Version](https://img.shields.io/badge/Swift-6.1-orange.svg) ![macOS 14+](https://img.shields.io/badge/macOS-14.0%2B-blue.svg) ![Linux](https://img.shields.io/badge/Linux-compatible-green.svg)
- [![SPM](https://img.shields.io/badge/Swift%20Package%20Manager-compatible-blue.svg)](https://github.com/apple/swift-package-manager) ![Swift](https://img.shields.io/badge/Swift-5.0-orange) ![Platforms](https://img.shields.io/badge/platforms-macOS-blue) ![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)
+![Swift Version](https://img.shields.io/badge/Swift-6.1-orange.svg) ![macOS 14+](https://img.shields.io/badge/macOS-14.0%2B-blue.svg) 
+ [![SPM](https://img.shields.io/badge/Swift%20Package%20Manager-compatible-blue.svg)](https://github.com/apple/swift-package-manager) ![Platforms](https://img.shields.io/badge/platforms-macOS|Linux|Windows-blue) ![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)
 
 ## Overview
 
@@ -72,13 +72,13 @@ TradeUI integrates several libraries and tools:
 Here are some screenshots showcasing the application:
 
 ### Main Window
-![Main Window](https://github.com/TradeWithIt/TradeUI/blob/main/Assets/main_window.png)
+![Main Window](./Assets/main_window.png)
 
 ### System Application Bar
-![System Application Bar](https://github.com/TradeWithIt/TradeUI/blob/main/Assets/bar_window.png)
+![System Application Bar](./Assets/bar_window.png)
 
 ### Watcher Preview Window
-![Watcher Preview Window](https://github.com/TradeWithIt/TradeUI/blob/main/Assets/watcher_window.png)
+![Watcher Preview Window](./Assets/watcher_window.png)
 
 These screenshots provide a visual overview of the application's key components and interface.
 
