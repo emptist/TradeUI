@@ -33,6 +33,68 @@ extension InteractiveBrokers {
         return try streamOrder(order)
     }
     
+    @discardableResult
+    func limitWithStopOrder(
+        contract: IBContract,
+        action: IBAction,
+        price: Double,
+        stopPrice: Double,
+        quantity: Double
+    ) throws -> AsyncStream<any OrderEvent> {
+        guard let account = account?.name else {
+            throw TradeError.requestError("Missing account identifier")
+        }
+        
+        let group = UUID().uuidString
+        
+        var limitOrder = IBOrder.limit(price, action: action, quantity: quantity, contract: contract, account: account)
+        limitOrder.orderID = nextOrderID
+        limitOrder.transmit = false
+        
+        var stopOrder = IBOrder.stop(
+            stopPrice,
+            action: action == .buy ? .sell : .buy,
+            quantity: quantity,
+            contract: contract,
+            account: account,
+            validUntil: .day,
+            hidden: true,
+            extendedTrading: false)
+        
+        stopOrder.orderID = nextOrderID
+        stopOrder.parentId = limitOrder.orderID
+        stopOrder.ocaGroup = group
+        stopOrder.transmit = true
+        
+        return AsyncStream { continuation in
+            let task1 = Task { [limitOrder] in
+                let stream = try streamOrder(limitOrder)
+                for try await event in stream {
+                    continuation.yield(event)
+                }
+            }
+
+            let task2 = Task { [stopOrder] in
+                let stream = try streamOrder(stopOrder)
+                for try await event in stream {
+                    continuation.yield(event)
+                }
+            }
+
+            continuation.onTermination = { _ in
+                task1.cancel()
+                task2.cancel()
+            }
+
+            Task {
+                _ = await task1.result
+                _ = await task2.result
+                continuation.finish()
+            }
+        }
+    }
+    
+    @discardableResult
     func limitWithTrailingStopOrder(
         contract: IBContract,
         action: IBAction,

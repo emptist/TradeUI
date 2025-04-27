@@ -26,6 +26,14 @@ public protocol MarketOrder: Sendable {
         trailStopPrice: Double,
         quantity: Double
     ) throws
+    
+    func makeLimitWithStopOrder(
+        contract product: any Contract,
+        action: OrderAction,
+        price: Double,
+        stopPrice: Double,
+        quantity: Double
+    ) throws
 }
 
 

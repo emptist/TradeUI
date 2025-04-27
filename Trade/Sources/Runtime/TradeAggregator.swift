@@ -93,7 +93,7 @@ public final class TradeAggregator: Hashable {
             let trade = Trade(
                 entryBar: entryBar,
                 price: entryBar.priceClose,
-                trailStopPrice: initialStopLoss,
+                stopPrice: initialStopLoss,
                 units: Double(units)
             )
             await request.watcherState.updateActiveTrade(trade)
@@ -120,7 +120,7 @@ public final class TradeAggregator: Hashable {
                     Trade(
                         entryBar: entryBar,
                         price: entryBar.priceClose,
-                        trailStopPrice: initialStopLoss,
+                        stopPrice: initialStopLoss,
                         units: Double(units)
                     ),
                 request: request
@@ -150,12 +150,12 @@ public final class TradeAggregator: Hashable {
         }
         guard isTradeEntryEnabled else { return }
         do {
-            print("✅ makeLimitWithTrailingStopOrder: ", marketOpen as Any)
-            try marketOrder?.makeLimitWithTrailingStopOrder(
+            print("✅ makeLimitWithStopOrder: ", marketOpen as Any)
+            try marketOrder?.makeLimitWithStopOrder(
                 contract: contract,
                 action: trade.entryBar.isLong ? .buy : .sell,
                 price: trade.price,
-                trailStopPrice: trade.trailStopPrice,
+                stopPrice: trade.stopPrice,
                 quantity: trade.units
             )
         } catch {
@@ -168,7 +168,7 @@ public final class TradeAggregator: Hashable {
         let strategy = await request.watcherState.getStrategy()
         
         guard
-            var activeTrade = await request.watcherState.getActiveTrade(),
+            let activeTrade = await request.watcherState.getActiveTrade(),
             let recentBar = strategy.candles.last,
             activeTrade.entryBar.timeOpen != recentBar.timeOpen
         else { return }
@@ -176,41 +176,9 @@ public final class TradeAggregator: Hashable {
         let shouldExit = strategy.shouldExit(entryBar: activeTrade.entryBar, nextAnnoucment: nextEvent)
         let isLongTrade = activeTrade.entryBar.isLong
         
-        // 🟡 Simulate trailing stop
-        if request.isSimulation {
-            let trailDistance = abs(activeTrade.entryBar.priceClose - activeTrade.trailStopPrice)
-            
-            if isLongTrade {
-                let maxHigh = strategy.candles
-                    .filter { $0.timeOpen >= activeTrade.entryBar.timeOpen }
-                    .map(\.priceHigh)
-                    .max() ?? activeTrade.entryBar.priceHigh
-                
-                let newStop = maxHigh - trailDistance
-                if newStop > activeTrade.trailStopPrice {
-                    print("🟢 Updating long trailing stop: \(activeTrade.trailStopPrice) → \(newStop)")
-                    activeTrade.trailStopPrice = newStop
-                    await request.watcherState.updateActiveTrade(activeTrade)
-                }
-                
-            } else {
-                let minLow = strategy.candles
-                    .filter { $0.timeOpen >= activeTrade.entryBar.timeOpen }
-                    .map(\.priceLow)
-                    .min() ?? activeTrade.entryBar.priceLow
-                
-                let newStop = minLow + trailDistance
-                if newStop < activeTrade.trailStopPrice {
-                    print("🔴 Updating short trailing stop: \(activeTrade.trailStopPrice) → \(newStop)")
-                    activeTrade.trailStopPrice = newStop
-                    await request.watcherState.updateActiveTrade(activeTrade)
-                }
-            }
-        }
-        
         let wouldHitStopLoss = isLongTrade
-        ? activeTrade.trailStopPrice >= recentBar.priceClose
-        : activeTrade.trailStopPrice <= recentBar.priceClose
+        ? activeTrade.stopPrice >= recentBar.priceClose
+        : activeTrade.stopPrice <= recentBar.priceClose
         
         if shouldExit, isTradeExitNotificationEnabled {
             tradeExitNotificationAction?(activeTrade, recentBar)

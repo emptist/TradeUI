@@ -301,6 +301,22 @@ public class InteractiveBrokers: @unchecked Sendable, Market {
         )
     }
     
+    public func makeLimitWithStopOrder(
+        contract product: any Contract,
+        action: OrderAction,
+        price: Double,
+        stopPrice: Double,
+        quantity: Double
+    ) throws {
+        try limitWithStopOrder(
+            contract: self.contract(product),
+            action: action == .buy ? .buy : .sell,
+            price: price,
+            stopPrice: stopPrice,
+            quantity: quantity
+        )
+    }
+    
     private func unsubscribeQuote(_ requestID: Int) {
         try? client.unsubscribeMarketData(requestID)
     }
