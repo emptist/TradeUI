@@ -99,7 +99,6 @@ public final class TradeAggregator: Hashable {
             await request.watcherState.updateActiveTrade(trade)
             print("🟤 enter trade: ", trade)
         } else if let account = marketOrder?.account {
-            // check if
             let nextEvent = getNextTradingAlertsAction?()
             let units = strategy.shouldEnterWitUnitCount(
                 entryBar: entryBar,
@@ -108,7 +107,6 @@ public final class TradeAggregator: Hashable {
                 nextAnnoucment: nextEvent
             )
             guard units > 0 else { return }
-            
             let initialStopLoss = strategy.adjustStopLoss(entryBar: entryBar)
             print("✅ enterTradeIfStrategyIsValidated, symbol: \(request.symbol): interval: \(request.interval)")
             print("✅ enterTradeIfStrategyIsValidated units: ", units)
@@ -129,37 +127,76 @@ public final class TradeAggregator: Hashable {
     }
     
     private func evaluateMarketCoonditions(trade: Trade, request: Request) async {
-        // Is market open during liquid hours
         let marketOpen = await request.watcherState.getTradingHours()?.isMarketOpen()
         print("✅ evaluateMarketCoonditions: ", marketOpen as Any)
         guard
             let marketOpen,
-            marketOpen.isOpen == true,
+            marketOpen.isOpen,
             let timeUntilClose = marketOpen.timeUntilChange,
-            // 30 min before market close
             timeUntilClose > (1_800 * 6)
         else { return }
         
         let hasNoActiveTrade = await request.watcherState.getActiveTrade() == nil
-        // Did not enter trade, as there is currently pending trade
         guard hasNoActiveTrade else { return }
-        await request.watcherState.updateActiveTrade(trade)
-        
-        if isTradeEntryNotificationEnabled {
-            tradeEntryNotificationAction?(trade, trade.entryBar)
+
+        guard let quote = await request.watcherState.getQuote() else {
+            print("⚠️ No quote available, cannot enter trade.")
+            return
         }
+
+        let orderPrice: Double
+        if trade.entryBar.isLong, let ask = quote.askPrice {
+            orderPrice = ask
+        } else if !trade.entryBar.isLong, let bid = quote.bidPrice {
+            orderPrice = bid
+        } else {
+            print("⚠️ No bid/ask available, fallback to entry bar close.")
+            orderPrice = trade.price
+        }
+
+        let tradeWithQuotePrice = Trade(
+            entryBar: trade.entryBar,
+            price: orderPrice,
+            stopPrice: trade.stopPrice,
+            units: trade.units
+        )
+
+        await request.watcherState.updateActiveTrade(tradeWithQuotePrice)
+
+        if isTradeEntryNotificationEnabled {
+            tradeEntryNotificationAction?(tradeWithQuotePrice, tradeWithQuotePrice.entryBar)
+        }
+        
         guard isTradeEntryEnabled else { return }
+
         do {
-            print("✅ makeLimitWithStopOrder: ", marketOpen as Any)
-            try marketOrder?.makeLimitWithStopOrder(
-                contract: contract,
-                action: trade.entryBar.isLong ? .buy : .sell,
-                price: trade.price,
-                stopPrice: trade.stopPrice,
-                quantity: trade.units
-            )
+            try await placeOrder(trade: tradeWithQuotePrice, isLong: trade.entryBar.isLong)
         } catch {
-            print("Something went wrong while exiting trade: \(error)")
+            print("🔴 Failed placing initial order: \(error)")
+        }
+    }
+    
+    private func placeOrder(trade: Trade, isLong: Bool) async throws {
+        guard let marketOrder else { return }
+
+        let side: OrderAction = isLong ? .buy : .sell
+        try marketOrder.makeLimitWithStopOrder(
+            contract: contract,
+            action: side,
+            price: trade.price,
+            stopPrice: trade.stopPrice,
+            quantity: trade.units
+        )
+    }
+    
+    private func cancelPendingOrders(activeTrade: Trade, recentBar: Klines) {
+        guard activeTrade.entryBar.timeClose == recentBar.timeOpen else { return }
+        guard let account = marketOrder?.account else { return }
+        guard let order = account.orders.first(where: { $0.value.symbol == contract.symbol }) else { return }
+        do {
+            try marketOrder?.cancelOrder(orderId: order.value.orderID)
+        } catch {
+            print("Error canceling pending orders: \(error)")
         }
     }
     
@@ -172,39 +209,47 @@ public final class TradeAggregator: Hashable {
             let recentBar = strategy.candles.last,
             activeTrade.entryBar.timeOpen != recentBar.timeOpen
         else { return }
+        
+        cancelPendingOrders(activeTrade: activeTrade, recentBar: recentBar)
+        
         let nextEvent = getNextTradingAlertsAction?()
         let shouldExit = strategy.shouldExit(entryBar: activeTrade.entryBar, nextAnnoucment: nextEvent)
         let isLongTrade = activeTrade.entryBar.isLong
         
         let wouldHitStopLoss = isLongTrade
-        ? activeTrade.stopPrice >= recentBar.priceClose
-        : activeTrade.stopPrice <= recentBar.priceClose
-        
+            ? activeTrade.stopPrice >= recentBar.priceClose
+            : activeTrade.stopPrice <= recentBar.priceClose
+
         if shouldExit, isTradeExitNotificationEnabled {
             tradeExitNotificationAction?(activeTrade, recentBar)
         }
         
-        if request.isSimulation, (shouldExit || wouldHitStopLoss) {
-            let profit = activeTrade.entryBar.isLong
-            ? recentBar.priceClose - activeTrade.price
-            : activeTrade.price - recentBar.priceClose
-            print("❌ profit: \(profit) entry: \(activeTrade.price) , exit: \(recentBar.priceClose), didHitStopLoss: \(wouldHitStopLoss)")
-            await request.watcherState.updateActiveTrade(nil)
-        } else if shouldExit, isTradeExitEnabled {
-            guard let account = marketOrder?.account else { return }
-            guard let position = account.positions.first(where: { $0.label == contract.label }) else { return }
-            do {
-                print("❌ makeLimitOrder")
-                try marketOrder?.makeLimitOrder(
-                    contract: contract,
-                    action: activeTrade.entryBar.isLong ? .sell : .buy,
-                    price: position.averageCost,
-                    quantity: position.quantity
-                )
-                print("❌ Exiting trade at \(activeTrade), entryPrice: \(activeTrade.price) , exitPrice: \(recentBar.priceClose), didHitStopLoss: \(wouldHitStopLoss)")
+        if (shouldExit || wouldHitStopLoss) {
+            let quote = await request.watcherState.getQuote()
+            let exitPrice = quote?.lastPrice ?? recentBar.priceClose
+
+            if request.isSimulation {
+                let profit = isLongTrade
+                    ? exitPrice - activeTrade.price
+                    : activeTrade.price - exitPrice
+                print("❌ profit: \(profit) entry: \(activeTrade.price), exit: \(exitPrice), stopLoss: \(wouldHitStopLoss)")
                 await request.watcherState.updateActiveTrade(nil)
-            } catch {
-                print("Something went wrong while exiting trade: \(error)")
+            } else if isTradeExitEnabled {
+                guard let account = marketOrder?.account else { return }
+                guard let position = account.positions.first(where: { $0.label == contract.label }) else { return }
+
+                do {
+                    try marketOrder?.makeLimitOrder(
+                        contract: contract,
+                        action: isLongTrade ? .sell : .buy,
+                        price: exitPrice,
+                        quantity: position.quantity
+                    )
+                    print("❌ Exiting trade, exitPrice: \(exitPrice)")
+                    await request.watcherState.updateActiveTrade(nil)
+                } catch {
+                    print("🔴 Error exiting trade: \(error)")
+                }
             }
         }
     }

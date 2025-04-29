@@ -2,6 +2,7 @@ import Foundation
 import IBKit
 
 extension InteractiveBrokers {
+    @discardableResult
     func limitOrder(
         contract: IBContract,
         action: IBAction,
