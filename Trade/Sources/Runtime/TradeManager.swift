@@ -60,7 +60,7 @@ import OrderedCollections
     
     public init(
         market: Market = InteractiveBrokers(),
-        persistance: Persistence = PersistenceManager.shared,
+        persistance: Persistence = PersistenceManager(),
         fileProvider: MarketDataFileProvider = MarketDataFileProvider(),
         tradeAlertHandler: TradeAlertHandling?
     ) {

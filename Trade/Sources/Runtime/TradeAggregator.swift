@@ -189,17 +189,6 @@ public final class TradeAggregator: Hashable {
         )
     }
     
-    private func cancelPendingOrders(activeTrade: Trade, recentBar: Klines) {
-        guard activeTrade.entryBar.timeClose == recentBar.timeOpen else { return }
-        guard let account = marketOrder?.account else { return }
-        guard let order = account.orders.first(where: { $0.value.symbol == contract.symbol }) else { return }
-        do {
-            try marketOrder?.cancelOrder(orderId: order.value.orderID)
-        } catch {
-            print("Error canceling pending orders: \(error)")
-        }
-    }
-    
     private func manageActiveTrade(_ request: Request) async {
         guard !Task.isCancelled else { return }
         let strategy = await request.watcherState.getStrategy()
@@ -209,8 +198,6 @@ public final class TradeAggregator: Hashable {
             let recentBar = strategy.candles.last,
             activeTrade.entryBar.timeOpen != recentBar.timeOpen
         else { return }
-        
-        cancelPendingOrders(activeTrade: activeTrade, recentBar: recentBar)
         
         let nextEvent = getNextTradingAlertsAction?()
         let shouldExit = strategy.shouldExit(entryBar: activeTrade.entryBar, nextAnnoucment: nextEvent)

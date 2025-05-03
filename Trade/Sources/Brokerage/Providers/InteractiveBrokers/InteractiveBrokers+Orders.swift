@@ -48,9 +48,17 @@ extension InteractiveBrokers {
         
         let group = UUID().uuidString
         
-        var limitOrder = IBOrder.limit(price, action: action, quantity: quantity, contract: contract, account: account)
+        var limitOrder = IBOrder.limit(
+            price,
+            action: action,
+            quantity: quantity,
+            contract: contract,
+            account: account
+        )
         limitOrder.orderID = nextOrderID
         limitOrder.transmit = false
+        limitOrder.tif = .goodTilDate
+        limitOrder.goodTillDate = Date().addingTimeInterval(8)
         
         var stopOrder = IBOrder.stop(
             stopPrice,
