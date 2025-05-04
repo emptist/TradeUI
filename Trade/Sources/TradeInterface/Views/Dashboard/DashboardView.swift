@@ -118,6 +118,8 @@ struct DashboardView: View {
                 VStack {
                     if let account {
                         AccountSummaryView(account: account)
+                    } else {
+                        MessageView().padding()
                     }
                     Spacer()
                     if let _ = trades.watcher {

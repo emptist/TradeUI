@@ -63,6 +63,10 @@ let package = Package(
                 .product(name: "TradingStrategy", package: "Strategy"),
                 .product(name: "ForexFactory", package: "ForexFactory"),
             ],
+            resources: [
+                .copy("AppleScript/imessage.applescript"),
+                .copy("AppleScript/sms.applescript")
+            ],
             linkerSettings: [
                 .linkedFramework("CoreGraphics"),
                 .linkedFramework("Foundation"),

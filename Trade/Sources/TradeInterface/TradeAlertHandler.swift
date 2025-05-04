@@ -37,49 +37,8 @@ public class TradeAlertHandler: TradeAlertHandling, @unchecked Sendable {
     ///   - message: message to be sent
     ///   - recipient: recipient phone number i.e. "+1234567890"
     private func sendiMessage(_ message: String, recipient: String) {
-        let script = """
-        tell application "Messages"
-            activate -- Ensure Messages is open
-            delay 1 -- Wait for app to fully load
-
-            set recipientID to "\(recipient)"
-            set targetService to 1st service whose service type = iMessage
-
-            if targetService is missing value then
-                return "❌ Error: No iMessage service available"
-            end if
-
-            try
-                set targetBuddy to buddy recipientID of targetService
-                send "\(message)" to targetBuddy
-                return "✅ iMessage sent successfully to \(recipient)"
-            on error
-                return "❌ Error: Could not send iMessage to \(recipient) (Not an iMessage user?)"
-            end try
-        end tell
-        """
-
-        let process = Process()
-        process.launchPath = "/usr/bin/osascript"
-        process.arguments = ["-e", script]
-
-        let pipe = Pipe()
-        process.standardOutput = pipe
-        process.standardError = pipe
-
-        process.launch()
-        process.waitUntilExit()
-
-        let outputData = pipe.fileHandleForReading.readDataToEndOfFile()
-        if let outputString = String(data: outputData, encoding: .utf8) {
-            print("💬 AppleScript Output: \(outputString.trimmingCharacters(in: .whitespacesAndNewlines))")
-        }
-
-        if process.terminationStatus == 0 {
-            print("✅ iMessage sent successfully to \(recipient)")
-        } else {
-            print("❌ Failed to send iMessage to \(recipient)")
-        }
+        let isSMS = UserDefaults.standard.value(forKey: "trade.alert.message.sms") as? Bool ?? false
+        AppleScriptMessenger.run(message, recipient: recipient, isSMS: isSMS)
     }
 
     /// Plays a sound alert when a trade entry/exit occurs
@@ -116,5 +75,14 @@ public extension String {
     var isValidPhoneNumber: Bool {
         let phoneRegex = #"^\+?[1-9]\d{1,14}$"#
         return NSPredicate(format: "SELF MATCHES %@", phoneRegex).evaluate(with: self)
+    }
+
+    var isValidEmail: Bool {
+        let emailRegex = #"^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$"#
+        return NSPredicate(format: "SELF MATCHES[c] %@", emailRegex).evaluate(with: self)
+    }
+
+    var isValidPhoneNumberOrEmail: Bool {
+        isValidPhoneNumber || isValidEmail
     }
 }
