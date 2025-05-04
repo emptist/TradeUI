@@ -117,3 +117,4 @@ playground.xcworkspace
 result.xml
 Trade/.build
 Trade/Sources/Runtime/Strategy/StrategyImp
+Trade/Sources/Runtime/Strategy/StrategyImp/
