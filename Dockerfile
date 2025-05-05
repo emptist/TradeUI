@@ -13,12 +13,14 @@
 #
 
 # Build stage: compile the CLI tool
-FROM swift:5.9-jammy as builder
+FROM swift:6.1-jammy as builder
 
 WORKDIR /app
 
 # Clone TradeUI CLI tool
 RUN git clone https://github.com/TradeWithIt/TradeUI.git .
+
+WORKDIR /app/Trade
 
 # Build the CLI executable
 RUN swift build -c release --product trade
