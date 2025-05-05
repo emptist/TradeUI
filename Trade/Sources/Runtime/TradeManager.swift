@@ -214,6 +214,7 @@ import OrderedCollections
         }
         registry.register(strategyType: DoNothingStrategy.self, name: "Viewing only")
         registry.register(strategyType: SurpriseBarStrategy.self, name: "Surprise Bar")
+        registry.register(strategyType: ORB30Strategy.self, name: "ORB 30")
         registry.register(strategyType: FollowMovingAverageStrategy.self, name: "Follow MVA")
     }
     
