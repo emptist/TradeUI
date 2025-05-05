@@ -38,9 +38,9 @@ struct AlertHandler: TradeAlertHandling, Sendable {
             ├──────────────────────────────┤
             │ Entry Time: \(entryTime)
             │ Entry Price: $\(String(format: "%.2f", trade.price))
-            │ Trail Stop Price: $\(String(format: "%.2f", trade.trailStopPrice))
+            │ Trail Stop Price: $\(String(format: "%.2f", trade.stopPrice))
             │ Units: \(String(format: "%.2f", trade.units))
-            │ Direction: \(trade.entryBar.isLong ? "Long" : "Short")
+            │ Direction: \(trade.isLong ? "Long" : "Short")
             └──────────────────────────────┘
             ┌──────────────────────────────┐
             │ Entry Bar (Interval: \(String(format: "%.0f", recentBar.interval))s) │
@@ -54,12 +54,12 @@ struct AlertHandler: TradeAlertHandling, Sendable {
             """)
         } else {
             // Trade Exit Alert
-            let profit = trade.entryBar.isLong
+            let profit = trade.isLong
                 ? recentBar.priceClose - trade.price
                 : trade.price - recentBar.priceClose
-            let didHitStopLoss = trade.entryBar.isLong
-                ? recentBar.priceClose <= trade.trailStopPrice
-                : recentBar.priceClose >= trade.trailStopPrice
+            let didHitStopLoss = trade.isLong
+                ? recentBar.priceClose <= trade.stopPrice
+                : recentBar.priceClose >= trade.stopPrice
             
             print("""
             🛑 Trade Exit Alert 🛑
@@ -73,7 +73,7 @@ struct AlertHandler: TradeAlertHandling, Sendable {
             │ Profit: $\(String(format: "%.2f", profit))
             │ Did Hit Stop Loss: \(didHitStopLoss ? "Yes" : "No")
             │ Units: \(String(format: "%.2f", trade.units))
-            │ Direction: \(trade.entryBar.isLong ? "Long" : "Short")
+            │ Direction: \(trade.isLong ? "Long" : "Short")
             └──────────────────────────────┘
             ┌──────────────────────────────┐
             │ Exit Bar (Interval: \(String(format: "%.0f", recentBar.interval))s) │

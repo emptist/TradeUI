@@ -16,7 +16,7 @@ public class TradeAlertHandler: TradeAlertHandling, @unchecked Sendable {
         if UserDefaults.standard.value(forKey: "trade.alert.message") as? Bool ?? true,
             let recipient = UserDefaults.standard.string(forKey: "trade.alert.message.recipient")?.trimmingCharacters(in: .whitespacesAndNewlines) {
             if recipient.isValidPhoneNumber {
-                let tradeDirection = trade.entryBar.isLong ? "Long" : "Short"
+                let tradeDirection = trade.isLong ? "Long" : "Short"
                 let message = "📈 Trade Alert: \(tradeDirection) at \(trade.price)\nRecent Bar: \(recentBar.priceClose)"
                 sendiMessage(message, recipient: recipient)
             } else {

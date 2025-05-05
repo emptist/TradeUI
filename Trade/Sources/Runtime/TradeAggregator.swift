@@ -45,22 +45,33 @@ public final class TradeAggregator: Hashable {
     public func registerTradeSignal(_ request: Request) async {
         let strategy = await request.watcherState.getStrategy()
         patternInformationChangeAction?(strategy.patternInformation)
-        if strategy.patternIdentified {
-            let contract = contract.label
-            let count = tradeQueue.sync(flags: .barrier) { [weak self] in
-                self?.tradeSignals.insert(request)
-                return self?.tradeSignals.count ?? 0
+        if let _ = strategy.patternIdentified {
+            let contractLabel = contract.label
+            
+            let alignedRequests: [(Request, Signal?)] =
+            await tradeQueue.sync(flags: .barrier) {
+                self.tradeSignals.insert(request)
+                return Array(self.tradeSignals)
+            }.asyncMap { req async in
+                let sig = await req.watcherState.getStrategy().patternIdentified
+                return (req, sig)
             }
             
-            if count >= minConfirmations {
+            // Count votes per signal
+            let groupedBySignal = Dictionary(grouping: alignedRequests, by: { $0.1 })
+            let (majoritySignal, matchingRequests) = groupedBySignal
+                .filter { $0.key != nil }
+                .max(by: { $0.value.count < $1.value.count }) ?? (nil, [])
+            
+            if let confirmedSignal = majoritySignal, matchingRequests.count >= minConfirmations {
                 let matchingRequest = tradeQueue.sync(flags: .barrier) { [weak self] in
-                    self?.tradeSignals.first(where: { $0.contract.label == contract })
+                    self?.tradeSignals.first(where: { $0.contract.label == contractLabel })
                 }
                 guard let matchingRequest else {
                     print("🔴 Failure to find matching request")
                     return
                 }
-                await enterTradeIfStrategyIsValidated(matchingRequest)
+                await enterTradeIfStrategyIsValidated(matchingRequest, signal: confirmedSignal)
                 tradeQueue.sync(flags: .barrier) { [weak self] in
                     self?.tradeSignals = []
                 }
@@ -75,40 +86,46 @@ public final class TradeAggregator: Hashable {
         await manageActiveTrade(request)
     }
     
-    private func enterTradeIfStrategyIsValidated(_ request: Request) async {
+    private func enterTradeIfStrategyIsValidated(_ request: Request, signal: Signal) async {
         guard !Task.isCancelled else { return }
         let hasNoActiveTrade = await request.watcherState.getActiveTrade() == nil
         guard hasNoActiveTrade else { return }
         let strategy = await request.watcherState.getStrategy()
-        guard strategy.patternIdentified, let entryBar = strategy.candles.last else { return }
+        guard let _ = strategy.patternIdentified, let entryBar = strategy.candles.last else { return }
         
         if request.isSimulation {
             let units = strategy.shouldEnterWitUnitCount(
+                signal: signal,
                 entryBar: entryBar,
                 equity: 1_000_000,
                 feePerUnit: 50,
                 nextAnnoucment: nil
             )
-            let initialStopLoss = strategy.adjustStopLoss(entryBar: entryBar) ?? 0
+            let initialStopLoss = strategy.adjustStopLoss(signal: signal, entryBar: entryBar) ?? 0
             let trade = Trade(
                 entryBar: entryBar,
+                signal: signal,
                 price: entryBar.priceClose,
                 stopPrice: initialStopLoss,
                 units: Double(units)
             )
             await request.watcherState.updateActiveTrade(trade)
             print("🟤 enter trade: ", trade)
+            print("🟤 signal: \(signal)")
+            print("🟤 entryBar.isLong: \(trade.entryBar.isLong)")
         } else if let account = marketOrder?.account {
             let nextEvent = getNextTradingAlertsAction?()
             let units = strategy.shouldEnterWitUnitCount(
+                signal: signal,
                 entryBar: entryBar,
                 equity: account.buyingPower,
                 feePerUnit: 50,
                 nextAnnoucment: nextEvent
             )
             guard units > 0 else { return }
-            let initialStopLoss = strategy.adjustStopLoss(entryBar: entryBar)
-            print("✅ enterTradeIfStrategyIsValidated, symbol: \(request.symbol): interval: \(request.interval)")
+            let initialStopLoss = strategy.adjustStopLoss(signal: signal, entryBar: entryBar)
+            print("✅ enterTradeIfStrategyIsValidated signal: \(signal)")
+            print("✅ enterTradeIfStrategyIsValidated symbol: \(request.symbol): interval: \(request.interval)")
             print("✅ enterTradeIfStrategyIsValidated units: ", units)
             print("✅ enterTradeIfStrategyIsValidated stopLoss: ", initialStopLoss ?? 0)
             guard let initialStopLoss else { return }
@@ -117,6 +134,7 @@ public final class TradeAggregator: Hashable {
                 trade:
                     Trade(
                         entryBar: entryBar,
+                        signal: signal,
                         price: entryBar.priceClose,
                         stopPrice: initialStopLoss,
                         units: Double(units)
@@ -145,9 +163,9 @@ public final class TradeAggregator: Hashable {
         }
 
         let orderPrice: Double
-        if trade.entryBar.isLong, let ask = quote.askPrice {
+        if trade.signal == .buy, let ask = quote.askPrice {
             orderPrice = ask
-        } else if !trade.entryBar.isLong, let bid = quote.bidPrice {
+        } else if trade.signal == .sell, let bid = quote.bidPrice {
             orderPrice = bid
         } else {
             print("⚠️ No bid/ask available, fallback to entry bar close.")
@@ -156,6 +174,7 @@ public final class TradeAggregator: Hashable {
 
         let tradeWithQuotePrice = Trade(
             entryBar: trade.entryBar,
+            signal: trade.signal,
             price: orderPrice,
             stopPrice: trade.stopPrice,
             units: trade.units
@@ -170,7 +189,7 @@ public final class TradeAggregator: Hashable {
         guard isTradeEntryEnabled else { return }
 
         do {
-            try await placeOrder(trade: tradeWithQuotePrice, isLong: trade.entryBar.isLong)
+            try await placeOrder(trade: tradeWithQuotePrice, isLong: trade.isLong)
         } catch {
             print("🔴 Failed placing initial order: \(error)")
         }
@@ -200,8 +219,8 @@ public final class TradeAggregator: Hashable {
         else { return }
         
         let nextEvent = getNextTradingAlertsAction?()
-        let shouldExit = strategy.shouldExit(entryBar: activeTrade.entryBar, nextAnnoucment: nextEvent)
-        let isLongTrade = activeTrade.entryBar.isLong
+        let shouldExit = strategy.shouldExit(signal: activeTrade.signal, entryBar: activeTrade.entryBar, nextAnnoucment: nextEvent)
+        let isLongTrade = activeTrade.isLong
         
         let wouldHitStopLoss = isLongTrade
             ? activeTrade.stopPrice >= recentBar.priceClose

@@ -25,8 +25,8 @@ public struct DoNothingStrategy: Strategy {
         self.distribution = []
     }
 
-    public var patternIdentified: Bool {
-        return false
+    public var patternIdentified: Signal? {
+        return nil
     }
     
     public var patternInformation: [String: Bool] {
@@ -36,6 +36,7 @@ public struct DoNothingStrategy: Strategy {
     // MARK: - Position Manager & Trade Decision
 
     public func shouldEnterWitUnitCount(
+        signal: Signal,
         entryBar: any TradingStrategy.Klines,
         equity: Double,
         feePerUnit cost: Double,
@@ -44,11 +45,11 @@ public struct DoNothingStrategy: Strategy {
         return 0
     }
     
-    public func shouldExit(entryBar: Klines, nextAnnoucment annoucment: Annoucment?) -> Bool {
+    public func shouldExit(signal: Signal, entryBar: Klines, nextAnnoucment annoucment: Annoucment?) -> Bool {
         return true
     }
     
-    public func adjustStopLoss(entryBar: Klines) -> Double? {
+    public func adjustStopLoss(signal: Signal, entryBar: Klines) -> Double? {
         return nil
     }
 }
