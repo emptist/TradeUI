@@ -192,6 +192,31 @@ TradeUI is designed to integrate custom trading strategies seamlessly. The **[St
 
 ---
 
+## 🐳 Docker Strategy Execution Guide
+
+To run strategies via CLI and IB Gateway entirely in Docker, see:
+
+➡️ [**Run-Strategy-With-TradeUI-and-IB.md**](./Run-Strategy-With-TradeUI-and-IB.md)
+
+It includes full instructions to:
+
+* Run the `trade` CLI with `.so` strategy files
+* Set up IB Gateway in Docker
+* Connect and simulate live trade environments
+
+---
+
+## 📢 Organization-Wide Readme & Disclaimers
+
+This project is part of the [**TradeWithIt**](https://github.com/TradeWithIt) organization.
+Please review the [**org README & Disclosures**](https://github.com/TradeWithIt/.github/blob/main/profile/README.md) for:
+
+* Important disclaimers
+* Usage expectations
+* Legal and ethical guidelines
+
+---
+
 ## Legal Disclaimer, License, and Contribution
 
 ### Legal Disclaimer
