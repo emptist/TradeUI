@@ -6,9 +6,12 @@ public struct ChartView: View {
     @State private var scaleDrag: Scale? = nil
     @State private var canvasSize: CGSize = .zero
     @State private var isManuallyDisplaced: Bool = false
+    @State private var now = Date()
+    private let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
     
     public let data: [Klines]
     public let interval: TimeInterval
+    public let lastUpdate: Date
     public var scaleOriginal: Scale
     private var canvasOverlay: (_ context: inout GraphicsContext, _ scale: Scale, _ frame: CGRect) -> Void
     private var canvasBackground: (_ context: inout GraphicsContext, _ scale: Scale, _ frame: CGRect) -> Void
@@ -17,8 +20,26 @@ public struct ChartView: View {
         scale.x != scaleOriginal.x || scale.y != scaleOriginal.y
     }
     
+    private var formattedElapsedTime: String {
+        let seconds = Int(now.timeIntervalSince(lastUpdate))
+
+        switch seconds {
+        case ..<60: return "\(seconds)s ago"
+        case ..<3600: return "\(seconds / 60)m ago"
+        case ..<86_400: return "\(seconds / 3600)h ago"
+        case ..<604_800: return "\(seconds / 86_400)d ago"
+        default:
+            if seconds < 1_000_000 {
+                return String(format: "%.1fk s ago", Double(seconds) / 1_000)
+            } else {
+                return String(format: "%.1fM s ago", Double(seconds) / 1_000_000)
+            }
+        }
+    }
+    
     public init(
         interval: TimeInterval,
+        lastUpdate: Date,
         data: [Klines],
         scale: Scale,
         overlay: @escaping (_ context: inout GraphicsContext, _ scale: Scale, _ frame: CGRect) -> Void = { _, _, _ in },
@@ -26,6 +47,7 @@ public struct ChartView: View {
     ) {
         self.data = data
         self.interval = interval
+        self.lastUpdate = lastUpdate
         self.scaleOriginal = scale
         self.canvasOverlay = overlay
         self.canvasBackground = background
@@ -45,6 +67,15 @@ public struct ChartView: View {
         .overlay(alignment: .topLeading) {
             IntervalLabelView(interval: interval, backgroundColor: Color.black.opacity(0.7))
         }
+        .overlay(alignment: .topTrailing) {
+            Text(formattedElapsedTime)
+                .font(.caption)
+                .padding(6)
+                .background(Color.black.opacity(0.7))
+                .foregroundColor(.white)
+                .clipShape(RoundedRectangle(cornerRadius: 4))
+                .padding()
+        }
         .overlay(alignment: .bottomLeading) {
             resetButton
         }
@@ -57,6 +88,7 @@ public struct ChartView: View {
             guard !isManuallyDisplaced else { return }
             resetScales()
         }
+        .onReceive(timer) { now = $0 }
     }
     
     @ViewBuilder
@@ -111,6 +143,7 @@ public struct ChartView: View {
     public func chartBackground(canvasOverlay: @escaping (_ context: inout GraphicsContext, _ scale: Scale, _ frame: CGRect) -> Void) -> ChartView {
         ChartView(
             interval: interval,
+            lastUpdate: lastUpdate,
             data: data,
             scale: scaleOriginal,
             overlay: canvasOverlay,
@@ -121,6 +154,7 @@ public struct ChartView: View {
     public func chartOverlay(canvasBackground: @escaping (_ context: inout GraphicsContext, _ scale: Scale, _ frame: CGRect) -> Void) -> ChartView {
         ChartView(
             interval: interval,
+            lastUpdate: lastUpdate,
             data: data,
             scale: scaleOriginal,
             overlay: canvasOverlay,
@@ -131,6 +165,6 @@ public struct ChartView: View {
 
 struct ChartView_Previews: PreviewProvider {
     static var previews: some View {
-        ChartView(interval: 60, data: [], scale: Scale())
+        ChartView(interval: 60, lastUpdate: Date(), data: [], scale: Scale())
     }
 }

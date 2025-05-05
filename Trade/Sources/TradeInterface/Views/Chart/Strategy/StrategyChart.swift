@@ -4,6 +4,7 @@ import TradingStrategy
 public struct StrategyChart: View {
     let strategy: any Strategy
     let interval: TimeInterval
+    let lastUpdated = Date()
     
     public init(strategy: any Strategy, interval: TimeInterval) {
         self.strategy = strategy
@@ -35,6 +36,7 @@ public struct StrategyChart: View {
         if !candles.isEmpty {
             ChartView(
                 interval: candles.first?.interval ?? interval,
+                lastUpdate: lastUpdated,
                 data: candles,
                 scale: chartScale
             )
