@@ -94,13 +94,12 @@ import OrderedCollections
     public func marketData<T: Strategy>(
         contract: any Contract,
         interval: TimeInterval,
-        strategyName: String,
         strategyType: T.Type
     ) throws {
-        let assetId = "\(strategyName)\(contract.label):\(interval)"
+        let assetId = "\(strategyType.id)\(contract.label):\(interval)"
         try lock.withLockVoid {
             guard watchers[assetId] == nil else {
-                print("🔴 Watcher already exist for strategy: \(strategyName), strategy type:", String(describing: strategyType))
+                print("🔴 Watcher already exist for strategy: \(strategyType.name), strategy type:", String(describing: strategyType))
                 return
             }
             let agregator = TradeAggregator(
@@ -124,7 +123,6 @@ import OrderedCollections
                 contract: contract,
                 interval: interval,
                 strategyType: strategyType,
-                strategyName: strategyName,
                 tradeAggregator: agregator,
                 market: market,
                 fileProvider: fileProvider

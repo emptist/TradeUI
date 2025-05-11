@@ -31,7 +31,7 @@ public struct StrategyQuoteView: View {
             }
             GeometryReader { proxy in
                 HStack(spacing: 0) {
-                    Text(strategyRegistry.strategyName(for: watcher.strategyType) ?? "Unknown")
+                    Text(watcher.strategyType.name)
                         .font(.subheadline)
                         .foregroundColor(.primary)
                         .frame(width: proxy.size.width / 7.0)
@@ -100,8 +100,11 @@ public struct StrategyQuoteView: View {
             Button(
                 action: {
                     Task {
-                        guard let strategyName = strategyRegistry.strategyName(for: watcher.strategyType) else { return }
-                        await cancelMarketData(watcher.contract, interval: watcher.interval, strategyName: strategyName)
+                        await cancelMarketData(
+                            watcher.contract,
+                            interval: watcher.interval,
+                            strategyId: watcher.strategyType.id
+                        )
                     }
                 },
                 label: {
@@ -123,7 +126,7 @@ public struct StrategyQuoteView: View {
         }
     }
     
-    private func cancelMarketData(_ contract: any Contract, interval: TimeInterval, strategyName: String) async {
+    private func cancelMarketData(_ contract: any Contract, interval: TimeInterval, strategyId: String) async {
         let asset = Asset(
             instrument: Instrument(
                 type: contract.type,
@@ -132,7 +135,7 @@ public struct StrategyQuoteView: View {
                 currency: contract.currency
             ),
             interval: interval,
-            strategyName: strategyName
+            strategyId: strategyId
         )
         await MainActor.run {
             var assetsToUpdate = watchedAssets

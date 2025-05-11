@@ -5,7 +5,7 @@ import TradingStrategy
 import SwiftUIComponents
 
 public struct SnapshotView: View {
-    @AppStorage("selected.strategy.same") private var selectedStrategyName: String = "Viewing only"
+    @AppStorage("selected.strategy.id") private var selectedStrategyId: String = DoNothingStrategy.id
     @Environment(\.dismiss) private var dismiss
     @Environment(\.presentationMode) var presentationMode
     @EnvironmentObject var strategyRegistry: StrategyRegistry
@@ -22,16 +22,16 @@ public struct SnapshotView: View {
     
     private var selectedStrategyBinding: Binding<String> {
         Binding(
-            get: { selectedStrategyName },
+            get: { selectedStrategyId },
             set: { value, transaction in
-                selectedStrategyName = value
+                selectedStrategyId = value
         })
     }
     
     public var body: some View {
         Group {
             VStack {
-                StrategyPicker(selectedStrategyName: selectedStrategyBinding, action: loadData(_:))
+                StrategyPicker(selectedStrategyId: selectedStrategyBinding, action: loadData(_:))
                 if let strategy {
                     VStack {
                         StrategyCheckList(strategy: strategy)
@@ -41,8 +41,8 @@ public struct SnapshotView: View {
                     ProgressView()
                         .progressViewStyle(CircularProgressViewStyle())
                         .onAppear {
-                            guard selectedStrategyName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
-                            selectedStrategyName = strategyRegistry.defaultStrategyName ?? ""
+                            guard selectedStrategyId.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+                            selectedStrategyId = strategyRegistry.defaultStrategyType.id
                         }
                 }
             }

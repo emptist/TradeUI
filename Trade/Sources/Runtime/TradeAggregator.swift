@@ -163,9 +163,9 @@ public final class TradeAggregator: Hashable {
         }
 
         let orderPrice: Double
-        if trade.signal == .buy, let ask = quote.askPrice {
+        if trade.signal.isLong, let ask = quote.askPrice {
             orderPrice = ask
-        } else if trade.signal == .sell, let bid = quote.bidPrice {
+        } else if !trade.signal.isLong, let bid = quote.bidPrice {
             orderPrice = bid
         } else {
             print("⚠️ No bid/ask available, fallback to entry bar close.")

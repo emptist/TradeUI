@@ -6,7 +6,7 @@ import Runtime
 
 struct DashboardView: View {
     @CodableAppStorage("watched.assets") private var watchedAssets: Set<Asset> = []
-    @AppStorage("selected.strategy.same") private var selectedStrategyName: String = "Viewing only"
+    @AppStorage("selected.strategy.id") private var selectedStrategyId: String = DoNothingStrategy.id
     @AppStorage("trade.alert.sound") private var alertSoundEnabled: Bool = true
     @AppStorage("trade.alert.message") private var alertMessageEnabled: Bool = true
     @AppStorage("selected.interval") private var interval: TimeInterval = 60
@@ -22,9 +22,9 @@ struct DashboardView: View {
     
     private var selectedStrategyBinding: Binding<String> {
         Binding(
-            get: { selectedStrategyName },
+            get: { selectedStrategyId },
             set: { value, transaction in
-                selectedStrategyName = value
+                selectedStrategyId = value
         })
     }
     
@@ -55,7 +55,7 @@ struct DashboardView: View {
                 }) {
                     Label("Strategies", systemImage: "externaldrive")
                 }
-                StrategyPicker(selectedStrategyName: selectedStrategyBinding)
+                StrategyPicker(selectedStrategyId: selectedStrategyBinding)
                 Button(action: { showIntervalPicker.toggle() }) {
                     IntervalLabelView(interval: interval)
                 }
@@ -108,7 +108,7 @@ struct DashboardView: View {
     
     func suggestionView(contract: any Contract, interval: TimeInterval) -> some View {
         SuggestionView(label: contract.label, symbol: contract.symbol) {
-            marketData(contract: contract, interval: interval, strategyName: selectedStrategyName)
+            marketData(contract: contract, interval: interval, strategyId: selectedStrategyId)
         }
     }
     
@@ -140,7 +140,7 @@ struct DashboardView: View {
             try? await Task.sleep(for: .milliseconds(200))
             await MainActor.run {
                 watchedAssets.forEach {
-                    self.marketData(contract: $0.instrument, interval: $0.interval, strategyName: $0.strategyName)
+                    self.marketData(contract: $0.instrument, interval: $0.interval, strategyId: $0.strategyId)
                 }
             }
         }
@@ -292,9 +292,9 @@ struct DashboardView: View {
             return true
         }
     
-    private func marketData(contract: any Contract, interval: TimeInterval, strategyName: String) {
+    private func marketData(contract: any Contract, interval: TimeInterval, strategyId: String) {
         do {
-            let strategyType: Strategy.Type = strategyRegistry.strategy(forName: strategyName) ?? DoNothingStrategy.self
+            let strategyType: Strategy.Type = strategyRegistry.strategyType(forId: strategyId) ?? DoNothingStrategy.self
             let asset = Asset(
                 instrument: Instrument(
                     type: contract.type,
@@ -303,13 +303,12 @@ struct DashboardView: View {
                     currency: contract.currency
                 ),
                 interval: interval,
-                strategyName: strategyName
+                strategyId: strategyId
             )
             watchedAssets.insert(asset)
             try trades.marketData(
                 contract: contract,
                 interval: interval,
-                strategyName: strategyName,
                 strategyType: strategyType
             )
         } catch {

@@ -18,10 +18,9 @@ public final class Watcher: @unchecked Sendable, Identifiable {
     }
     
     public var symbol: String { contract.symbol }
-    public var id: String { "\(strategyName)\(contract.label):\(interval)" }
+    public var id: String { "\(strategyType.id)\(contract.label):\(interval)" }
     public var displayName: String { "\(symbol): \(interval.formatCandleTimeInterval())" }
     public let strategyType: Strategy.Type
-    public let strategyName: String
     public var tradeAggregator: TradeAggregator!
         
     private var quoteTask: Task<Void, Never>?
@@ -42,7 +41,6 @@ public final class Watcher: @unchecked Sendable, Identifiable {
         contract: any Contract,
         interval: TimeInterval,
         strategyType: Strategy.Type,
-        strategyName: String,
         tradeAggregator: TradeAggregator,
         marketData: MarketData,
         fileProvider: CandleFileProvider,
@@ -52,7 +50,6 @@ public final class Watcher: @unchecked Sendable, Identifiable {
         self.interval = interval
         self.userInfo = userInfo
         self.strategyType = strategyType
-        self.strategyName = strategyName
         self.tradeAggregator = tradeAggregator
         
         self.watcherState = WatcherStateActor(initialStrategy: strategyType.init(candles: []))
@@ -72,7 +69,6 @@ public final class Watcher: @unchecked Sendable, Identifiable {
         contract: any Contract,
         interval: TimeInterval,
         strategyType: Strategy.Type,
-        strategyName: String,
         tradeAggregator: TradeAggregator,
         market: Market,
         fileProvider: CandleFileProvider,
@@ -82,7 +78,6 @@ public final class Watcher: @unchecked Sendable, Identifiable {
             contract: contract,
             interval: interval,
             strategyType: strategyType,
-            strategyName: strategyName,
             tradeAggregator: tradeAggregator,
             marketData: market,
             fileProvider: fileProvider,
@@ -94,7 +89,6 @@ public final class Watcher: @unchecked Sendable, Identifiable {
         contract: any Contract,
         interval: TimeInterval,
         strategyType: Strategy.Type,
-        strategyName: String,
         tradeAggregator: TradeAggregator,
         fileProvider: CandleFileProvider & MarketData,
         userInfo: [String: Any] = [:]
@@ -103,7 +97,6 @@ public final class Watcher: @unchecked Sendable, Identifiable {
             contract: contract,
             interval: interval,
             strategyType: strategyType,
-            strategyName: strategyName,
             tradeAggregator: tradeAggregator,
             marketData: fileProvider,
             fileProvider: fileProvider,

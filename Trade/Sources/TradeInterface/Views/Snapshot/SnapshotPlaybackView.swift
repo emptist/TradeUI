@@ -5,7 +5,7 @@ import TradingStrategy
 
 public struct SnapshotPlaybackView: View {
     @Environment(\.presentationMode) var presentationMode
-    @AppStorage("selected.strategy.same") private var selectedStrategyName: String = "Viewing only"
+    @AppStorage("selected.strategy.id") private var selectedStrategyId: String = DoNothingStrategy.id
     @State var watcher: Watcher?
     
     let node: FileSnapshotsView.FileNode?
@@ -46,9 +46,8 @@ public struct SnapshotPlaybackView: View {
     
     private func runSimulation() {
         guard let url = node?.url else { return }
-        let unknown = StrategyRegistry.shared.strategy(forName: selectedStrategyName)
+        let unknown = StrategyRegistry.shared.strategyType(forId: selectedStrategyId)
         let strategyType = unknown ?? StrategyRegistry.shared.defaultStrategyType
-        let stratName = unknown == nil ? StrategyRegistry.shared.defaultStrategyName : selectedStrategyName
         let information = node?.name.decodeFileName()
         do {
             let contract = Instrument(type: "", symbol: information?.symbol ?? url.lastPathComponent, exchangeId: "", currency: "")
@@ -56,7 +55,6 @@ public struct SnapshotPlaybackView: View {
                 contract: contract,
                 interval: information?.interval ?? 60,
                 strategyType: strategyType,
-                strategyName: stratName ?? selectedStrategyName,
                 tradeAggregator: TradeAggregator(contract: contract),
                 fileProvider: fileProvider,
                 userInfo: [

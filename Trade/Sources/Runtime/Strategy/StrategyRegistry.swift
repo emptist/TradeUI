@@ -6,24 +6,21 @@ import TradingStrategy
 public final class StrategyRegistry: ObservableObject {
     public static let shared = StrategyRegistry()
     public var defaultStrategyType: Strategy.Type = DoNothingStrategy.self
-    public var defaultStrategyName: String? {
-        return strategyName(for: defaultStrategyType)
-    }
     
     /// Holds registered strategy types by name.
     private var strategies: [String: Strategy.Type] = [:]
 
-    public func strategy(forId id: String) -> Strategy.Type? {
+    public func strategyType(forId id: String) -> Strategy.Type? {
         strategies[id]
     }
     
-    public func strategyName<T: Strategy>(for type: T.Type) -> String? {
-        return type.name
+    public func strategyName(forId id: String) -> String? {
+        strategies[id]?.name
     }
 
     /// Returns the list of registered strategy names.
-    public func availableStrategies() -> [String] {
-        return Array(strategies.values.map({ $0.name }))
+    public func availableStrategies() -> [Strategy.Type] {
+        return Array(strategies.values)
     }
     
     /// Registers a strategy by providing its type and a unique name.

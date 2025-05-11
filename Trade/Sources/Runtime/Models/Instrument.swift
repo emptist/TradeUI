@@ -4,16 +4,16 @@ import Brokerage
 public struct Asset: Codable, Hashable {
     public var instrument: Instrument
     public var interval: TimeInterval
-    public var strategyName: String
+    public var strategyId: String
     
     public var id: String {
-        "\(strategyName)\(instrument.label):\(interval)"
+        "\(strategyId)\(instrument.label):\(interval)"
     }
     
-    public init(instrument: Instrument, interval: TimeInterval, strategyName: String) {
+    public init(instrument: Instrument, interval: TimeInterval, strategyId: String) {
         self.instrument = instrument
         self.interval = interval
-        self.strategyName = strategyName
+        self.strategyId = strategyId
     }
 }
 
