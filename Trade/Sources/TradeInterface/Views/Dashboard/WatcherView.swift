@@ -25,25 +25,15 @@ public struct WatcherView: View {
     public var body: some View {
         if let watcher {
             VStack {
-                GeometryReader { geometry in
-                    HStack {
-                        StrategyQuoteView(
-                            watcher: watcher,
-                            showActions: showActions
-                        )
-                        .frame(width: geometry.size.width * 4.0/7.0, height: geometry.size.height)
-                        Group {
-                            if let strategy {
-                                confidenceView(strategy: strategy)
-                                StrategyCheckList(strategy: strategy)
-                            } else {
-                                Spacer()
-                            }
-                        }
-                        .frame(width: geometry.size.width * 3.0/7.0, height: geometry.size.height)
+                VStack {
+                    StrategyQuoteView(
+                        watcher: watcher,
+                        showActions: showActions
+                    )
+                    if let strategy {
+                        StrategyCheckList(strategy: strategy)
                     }
                 }
-                .frame(height: 32)
                 if showChart, let strategy, let interval {
                     StrategyChart(
                         strategy: strategy,
@@ -55,32 +45,6 @@ public struct WatcherView: View {
             .id(watcher.id + "_view")
             .onReceive(updateTimer) { _ in
                 Task { await fetchWatcherState() }
-            }
-        }
-    }
-
-    @ViewBuilder
-    private func confidenceView(strategy: any Strategy) -> some View {
-        VStack(alignment: .center, spacing: 4) {
-            if strategy.patternIdentified != nil {
-                Text("Confidence")
-                    .lineLimit(1)
-                    .foregroundColor(.white.opacity(0.4))
-                    .font(.caption)
-            }
-            switch strategy.patternIdentified {
-            case let .buy(confidence):
-                Text("\(confidence * 100)%%")
-                    .lineLimit(1)
-                    .foregroundColor(.green)
-                    .font(.subheadline)
-            case let .sell(confidence):
-                Text("\(confidence * 100)%%")
-                    .lineLimit(1)
-                    .foregroundColor(.red)
-                    .font(.subheadline)
-            default:
-                EmptyView()
             }
         }
     }

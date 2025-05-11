@@ -11,11 +11,40 @@ public struct StrategyCheckList: View {
     
     public var body: some View {
         HStack {
+            confidenceView(strategy: strategy)
+            Spacer(minLength: 0)
             ForEach(Array(strategy.patternInformation.keys.sorted()), id: \.self) { key in
                 checkItem(name: key) { strategy.patternInformation[key] ?? false }
             }
         }
         .padding(.horizontal)
+    }
+    
+    @ViewBuilder
+    private func confidenceView(strategy: any Strategy) -> some View {
+        VStack(alignment: .center, spacing: 4) {
+            Text("Confidence")
+                .lineLimit(1)
+                .foregroundColor(.white.opacity(0.4))
+                .font(.caption)
+            switch strategy.patternIdentified {
+            case let .buy(confidence):
+                Text("\(confidence * 100)%%")
+                    .lineLimit(1)
+                    .foregroundColor(.green)
+                    .font(.subheadline)
+            case let .sell(confidence):
+                Text("\(confidence * 100)%%")
+                    .lineLimit(1)
+                    .foregroundColor(.red)
+                    .font(.subheadline)
+            default:
+                Text("-")
+                    .lineLimit(1)
+                    .foregroundColor(.gray)
+                    .font(.subheadline)
+            }
+        }
     }
     
     private func checkItem(name: String, _ condition: () -> Bool) -> some View {
