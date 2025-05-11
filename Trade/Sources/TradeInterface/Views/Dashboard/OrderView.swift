@@ -63,12 +63,13 @@ struct OrderView: View {
                     .foregroundColor(.secondary)
                 Spacer(minLength: 0)
                 Button("Cancel") {
-                    do {
-                        try trades.market.cancelOrder(orderId: order.orderID)
-                    } catch {
-                        print(error)
+                    Task {
+                        do {
+                            try await trades.market.cancelOrder(orderId: order.orderID)
+                        } catch {
+                            print(error)
+                        }
                     }
-                    
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -122,7 +123,7 @@ struct OrderView: View {
                         let strategy = await watcher?.watcherState.getStrategy()
                         guard let contract = watcher?.contract, let bar = strategy?.charts.first?.last else { return }
                         do {
-                            try trades.market.makeLimitWithTrailingStopOrder(
+                            try await trades.market.makeLimitWithTrailingStopOrder(
                                 contract: contract,
                                 action: .buy,
                                 price: bar.priceHigh,
@@ -140,7 +141,7 @@ struct OrderView: View {
                         let strategy = await watcher?.watcherState.getStrategy()
                         guard let contract = watcher?.contract, let bar = strategy?.charts.first?.last else { return }
                         do {
-                            try trades.market.makeLimitWithTrailingStopOrder(
+                            try await trades.market.makeLimitWithTrailingStopOrder(
                                 contract: contract,
                                 action: .sell,
                                 price: bar.priceLow,
@@ -155,12 +156,13 @@ struct OrderView: View {
                 .buttonStyle(TradingButtonStyle(backgroundColor: .red))
                 Spacer()
                 Button("Cancel All") {
-                    do {
-                        try trades.market.cancelAllOrders()
-                    } catch {
-                        print(error)
+                    Task {
+                        do {
+                            try await trades.market.cancelAllOrders()
+                        } catch {
+                            print(error)
+                        }
                     }
-                    
                 }
                 .buttonStyle(TradingButtonStyle(backgroundColor: .gray))
             }

@@ -141,7 +141,13 @@ public struct StrategyQuoteView: View {
             }
             watchedAssets = assetsToUpdate
         }
-        trades.cancelMarketData(asset)
+        Task {
+            do {
+                try await trades.cancelMarketData(asset)
+            } catch {
+                print("🔴 Error canceling market data:", error)
+            }
+        }
     }
     
     private func formatPrice(_ value: Double?) -> String {

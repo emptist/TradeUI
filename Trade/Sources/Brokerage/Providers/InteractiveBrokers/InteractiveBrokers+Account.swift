@@ -3,20 +3,20 @@ import IBKit
 
 public extension InteractiveBrokers {
     // MARK: - Start Listening to Account Updates
-    func startListening(accountId: String) {
+    func startListening(accountId: String) async {
         if self.accounts[accountId] == nil {
             self.accounts[accountId] = Account(name: accountId)
         }
         print("🚀 Start Listening: \(accountId)")
         do {
-            try client.subscribeAccountSummary(client.nextRequestID, accountGroup: accountId)
-            try client.subscribeAccountUpdates(accountName: accountId, subscribe: true)
+            try await client.subscribeAccountSummary(client.nextRequestID, accountGroup: accountId)
+            try await client.subscribeAccountUpdates(accountName: accountId, subscribe: true)
             
-            try client.requestOpenOrders()
-            try client.requestAllOpenOrders()
-            try client.requestExecutions(client.nextRequestID)
+            try await client.requestOpenOrders()
+            try await client.requestAllOpenOrders()
+            try await client.requestExecutions(client.nextRequestID)
             
-            try client.subscribePositions()
+            try await client.subscribePositions()
         } catch {
             print("Failed to Listen for Account updates with error: \(error)")
         }
@@ -153,7 +153,7 @@ public extension InteractiveBrokers {
     }
 
     
-    func updatePositions(_ position: IBPosition) {
+    func updatePositions(_ position: IBPosition) async {
         if let index = accounts[position.accountName]?.positions.firstIndex(where: { $0.contractID == position.contract.id }) {
             if position.position == 0 {
                 accounts[position.accountName]?.positions.remove(at: index)
@@ -176,7 +176,7 @@ public extension InteractiveBrokers {
         
         if let contrectId = position.contract.id {
             do {
-                try client.subscribePositionPNL(
+                try await client.subscribePositionPNL(
                     client.nextRequestID,
                     accountName: position.accountName,
                     contractID: contrectId,

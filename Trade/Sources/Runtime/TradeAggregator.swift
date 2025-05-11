@@ -199,7 +199,7 @@ public final class TradeAggregator: Hashable {
         guard let marketOrder else { return }
 
         let side: OrderAction = isLong ? .buy : .sell
-        try marketOrder.makeLimitWithStopOrder(
+        try await marketOrder.makeLimitWithStopOrder(
             contract: contract,
             action: side,
             price: trade.price,
@@ -245,7 +245,7 @@ public final class TradeAggregator: Hashable {
                 guard let position = account.positions.first(where: { $0.label == contract.label }) else { return }
 
                 do {
-                    try marketOrder?.makeLimitOrder(
+                    try await marketOrder?.makeLimitOrder(
                         contract: contract,
                         action: isLongTrade ? .sell : .buy,
                         price: exitPrice,

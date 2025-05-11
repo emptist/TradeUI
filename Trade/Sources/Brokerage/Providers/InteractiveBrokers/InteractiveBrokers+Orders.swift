@@ -8,13 +8,13 @@ extension InteractiveBrokers {
         action: IBAction,
         price: Double,
         quantity: Double
-    ) throws -> AsyncStream<any OrderEvent> {
+    ) async throws -> AsyncStream<any OrderEvent> {
         guard let account = account?.name else {
             throw TradeError.requestError("Missing account identifier")
         }
         var order = IBOrder.limit(price, action: action, quantity: quantity, contract: contract, account: account)
         order.orderID = nextOrderID
-        return try streamOrder(order)
+        return try await streamOrder(order)
     }
     
     func trailingStopOrder(
@@ -24,14 +24,14 @@ extension InteractiveBrokers {
         price: Double,
         trailStopPrice: Double,
         quantity: Double
-    ) throws -> AsyncStream<any OrderEvent> {
+    ) async throws -> AsyncStream<any OrderEvent> {
         guard let account = account?.name else {
             throw TradeError.requestError("Missing account identifier")
         }
         var order = IBOrder.trailingStop(stop: trailStopPrice, limit: price, action: action, quantity: quantity, contract: contract, account: account)
         order.orderID = nextOrderID
         order.parentId = parentOrderId
-        return try streamOrder(order)
+        return try await streamOrder(order)
     }
     
     @discardableResult
@@ -68,7 +68,8 @@ extension InteractiveBrokers {
             account: account,
             validUntil: .day,
             hidden: true,
-            extendedTrading: false)
+            extendedTrading: true
+        )
         
         stopOrder.orderID = nextOrderID
         stopOrder.parentId = limitOrder.orderID
@@ -77,14 +78,14 @@ extension InteractiveBrokers {
         
         return AsyncStream { continuation in
             let task1 = Task { [limitOrder] in
-                let stream = try streamOrder(limitOrder)
+                let stream = try await streamOrder(limitOrder)
                 for try await event in stream {
                     continuation.yield(event)
                 }
             }
 
             let task2 = Task { [stopOrder] in
-                let stream = try streamOrder(stopOrder)
+                let stream = try await streamOrder(stopOrder)
                 for try await event in stream {
                     continuation.yield(event)
                 }
@@ -136,14 +137,14 @@ extension InteractiveBrokers {
         
         return AsyncStream { continuation in
             let task1 = Task { [limitOrder] in
-                let stream = try streamOrder(limitOrder)
+                let stream = try await streamOrder(limitOrder)
                 for try await event in stream {
                     continuation.yield(event)
                 }
             }
 
             let task2 = Task { [stopOrder] in
-                let stream = try streamOrder(stopOrder)
+                let stream = try await streamOrder(stopOrder)
                 for try await event in stream {
                     continuation.yield(event)
                 }
@@ -162,9 +163,9 @@ extension InteractiveBrokers {
         }
     }
     
-    private func streamOrder(_ order: IBOrder) throws -> AsyncStream<any OrderEvent> {
+    private func streamOrder(_ order: IBOrder) async throws -> AsyncStream<any OrderEvent> {
         let requestID = client.nextRequestID
-        try client.placeOrder(requestID, order: order)
+        try await client.placeOrder(requestID, order: order)
         
         return AsyncStream { continuation in
             Task {

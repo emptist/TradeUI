@@ -75,15 +75,15 @@ public class InteractiveBrokers: @unchecked Sendable, Market {
             for await anyEvent in await self.client.eventFeed {
                 switch anyEvent {
                 case let event as IBManagedAccounts:
-                    event.identifiers.forEach { accountId in
-                        self.startListening(accountId: accountId)
+                    for accountId in event.identifiers {
+                        await self.startListening(accountId: accountId)
                     }
                 case let event as IBAccountSummary:
                     self.updateAccountData(event: event)
                 case let event as IBAccountUpdate:
                     self.updateAccountData(event: event)
                 case let event as IBPosition:
-                    self.updatePositions(event)
+                    await self.updatePositions(event)
                 case let event as IBPositionPNL:
                     self.updatePositions(event)
                 case let event as IBPortfolioValue:
@@ -174,14 +174,14 @@ public class InteractiveBrokers: @unchecked Sendable, Market {
     
     public func tradingHour(_ product: any Contract) async throws -> [TradingHour] {
         let details = try await contractDetails(product)
-        return details.liquidHours?.map {
+        return details.tradingHours?.map {
             TradingHour(open: $0.open, close: $0.close, status: $0.status.rawValue)
         } ?? []
     }
     
     public func unitFee(_ product: any Contract) async throws -> [TradingHour] {
         let details = try await contractDetails(product)
-        return details.liquidHours?.map {
+        return details.tradingHours?.map {
             TradingHour(open: $0.open, close: $0.close, status: $0.status.rawValue)
         } ?? []
     }
@@ -197,8 +197,8 @@ public class InteractiveBrokers: @unchecked Sendable, Market {
     
     // MARK: Private IB Type handling
     
-    private func unsubscribeMarketData(_ requestID: Int) {
-        try? client.cancelHistoricalData(requestID)
+    private func unsubscribeMarketData(_ requestID: Int) async throws {
+        try await client.cancelHistoricalData(requestID)
     }
     
     // publishes one time event
@@ -216,7 +216,7 @@ public class InteractiveBrokers: @unchecked Sendable, Market {
             size: size,
             source: .trades,
             lookback: duration,
-            extendedTrading: false,
+            extendedTrading: true,
             includeExpired: false
         )
         print("historicBarPublisher", historicBarPublisher, request)
@@ -226,7 +226,7 @@ public class InteractiveBrokers: @unchecked Sendable, Market {
                     continuation.finish()
                     return
                 }
-                try self?.client.send(request: request)
+                try await self?.client.send(request: request)
                 for await event in stream {
                     guard
                         let event = event as? IBIndexedEvent,
@@ -237,7 +237,7 @@ public class InteractiveBrokers: @unchecked Sendable, Market {
                     if let data = self?.unsubscribeMarketData, data.contains(asset) {
                         self?.unsubscribeMarketData.remove(asset)
                         self?.unsubscribeQuote.insert(contract)
-                        self?.unsubscribeMarketData(requestID)
+                        try? await self?.unsubscribeMarketData(requestID)
                         continuation.finish()
                         return
                     }
@@ -263,12 +263,12 @@ public class InteractiveBrokers: @unchecked Sendable, Market {
     
     // MARK: Market Order
     
-    public func cancelAllOrders() throws {
-        try client.cancelAllOrders()
+    public func cancelAllOrders() async throws {
+        try await client.cancelAllOrders()
     }
     
-    public func cancelOrder(orderId: Int) throws {
-        try client.cancelOrder(orderId)
+    public func cancelOrder(orderId: Int) async throws {
+        try await client.cancelOrder(orderId)
     }
     
     public func makeLimitOrder(
@@ -276,8 +276,8 @@ public class InteractiveBrokers: @unchecked Sendable, Market {
         action: OrderAction,
         price: Double,
         quantity: Double
-    ) throws {
-        try limitOrder(
+    ) async throws {
+        try await limitOrder(
             contract: self.contract(product),
             action: action == .buy ? .buy : .sell,
             price: price,
@@ -291,7 +291,7 @@ public class InteractiveBrokers: @unchecked Sendable, Market {
         price: Double,
         trailStopPrice: Double,
         quantity: Double
-    ) throws {
+    ) async throws {
         try limitWithTrailingStopOrder(
             contract: self.contract(product),
             action: action == .buy ? .buy : .sell,
@@ -307,7 +307,7 @@ public class InteractiveBrokers: @unchecked Sendable, Market {
         price: Double,
         stopPrice: Double,
         quantity: Double
-    ) throws {
+    ) async throws {
         try limitWithStopOrder(
             contract: self.contract(product),
             action: action == .buy ? .buy : .sell,
@@ -317,8 +317,8 @@ public class InteractiveBrokers: @unchecked Sendable, Market {
         )
     }
     
-    private func unsubscribeQuote(_ requestID: Int) {
-        try? client.unsubscribeMarketData(requestID)
+    private func unsubscribeQuote(_ requestID: Int) async {
+        try? await client.unsubscribeMarketData(requestID)
     }
     
     /// publishes live bid, ask, last snapshorts taken every 250ms of requested contract
@@ -342,7 +342,7 @@ public class InteractiveBrokers: @unchecked Sendable, Market {
                 let stream: AsyncStream<IBTick> = try await self.client.stream(request: request)
                 for await event in stream {
                     if self.unsubscribeQuote.contains(contract) {
-                        self.unsubscribeQuote(requestID)
+                        await self.unsubscribeQuote(requestID)
                         self.unsubscribeQuote.remove(contract)
                     }
                     if let quote = Quote(tick: event, contract: contract) {

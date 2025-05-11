@@ -83,8 +83,8 @@ import OrderedCollections
     
     // MARK: - Market Data
     
-    public func cancelMarketData(_ asset: Asset) {
-        market.unsubscribeMarketData(contract: asset.instrument, interval: asset.interval)
+    public func cancelMarketData(_ asset: Asset) async throws {
+        try await market.unsubscribeMarketData(contract: asset.instrument, interval: asset.interval)
         lock.withLockVoid {
             watchers.removeValue(forKey: asset.id)
         }

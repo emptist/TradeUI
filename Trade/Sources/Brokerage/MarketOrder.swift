@@ -8,8 +8,8 @@ public protocol MarketOrder: Sendable {
     var account: Account? { get }
     
     /// Retrieve All Active Orders
-    func cancelAllOrders() throws
-    func cancelOrder(orderId: Int) throws
+    func cancelAllOrders() async throws
+    func cancelOrder(orderId: Int) async throws
     
     /// Create Orders
     func makeLimitOrder(
@@ -17,7 +17,7 @@ public protocol MarketOrder: Sendable {
         action: OrderAction,
         price: Double,
         quantity: Double
-    ) throws
+    ) async throws
     
     func makeLimitWithTrailingStopOrder(
         contract product: any Contract,
@@ -25,7 +25,7 @@ public protocol MarketOrder: Sendable {
         price: Double,
         trailStopPrice: Double,
         quantity: Double
-    ) throws
+    ) async throws
     
     func makeLimitWithStopOrder(
         contract product: any Contract,
@@ -33,7 +33,7 @@ public protocol MarketOrder: Sendable {
         price: Double,
         stopPrice: Double,
         quantity: Double
-    ) throws
+    ) async throws
 }
 
 

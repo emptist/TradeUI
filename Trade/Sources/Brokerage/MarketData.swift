@@ -34,7 +34,7 @@ public protocol MarketData: Sendable {
     /// - Parameters:
     ///   - symbol: Asset symbol
     ///   - interval: Bar interval
-    func unsubscribeMarketData(contract: any Contract, interval: TimeInterval)
+    func unsubscribeMarketData(contract: any Contract, interval: TimeInterval) async throws
     func quotePublisher(contract product: any Contract) throws -> AsyncStream<Quote>
     func tradingHour(_ product: any Contract) async throws -> [TradingHour]
 }
