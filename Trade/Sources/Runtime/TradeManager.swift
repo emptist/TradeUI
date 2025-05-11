@@ -85,8 +85,11 @@ import OrderedCollections
     
     public func cancelMarketData(_ asset: Asset) async throws {
         try await market.unsubscribeMarketData(contract: asset.instrument, interval: asset.interval)
-        lock.withLockVoid {
-            watchers.removeValue(forKey: asset.id)
+        let id = asset.id
+        await MainActor.run { [id] in
+            lock.withLockVoid {
+                watchers.removeValue(forKey: id)
+            }
         }
     }
     

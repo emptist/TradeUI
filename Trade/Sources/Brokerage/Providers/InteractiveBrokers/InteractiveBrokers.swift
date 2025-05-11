@@ -219,7 +219,6 @@ public class InteractiveBrokers: @unchecked Sendable, Market {
             extendedTrading: true,
             includeExpired: false
         )
-        print("historicBarPublisher", historicBarPublisher, request)
         return AsyncStream { continuation in
             Task { [weak self, continuation] in
                 guard let stream = await self?.client.eventFeed else {

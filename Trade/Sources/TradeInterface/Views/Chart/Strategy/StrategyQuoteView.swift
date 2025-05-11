@@ -144,12 +144,10 @@ public struct StrategyQuoteView: View {
             }
             watchedAssets = assetsToUpdate
         }
-        Task {
-            do {
-                try await trades.cancelMarketData(asset)
-            } catch {
-                print("🔴 Error canceling market data:", error)
-            }
+        do {
+            try await trades.cancelMarketData(asset)
+        } catch {
+            print("🔴 Error canceling market data:", error)
         }
     }
     
