@@ -2,9 +2,9 @@ import Foundation
 import TradingStrategy
 
 public struct DoNothingStrategy: Strategy {
-    public var id = "com.view.only"
-    public var name = "Viewing only"
-    public var version: (major: Int, minor: Int, patch: Int) = (1, 0, 0)
+    public static let id = "com.view.only"
+    public static let name = "Viewing only"
+    public static let version: (major: Int, minor: Int, patch: Int) = (1, 0, 0)
     
     public let charts: [[Klines]]
     public let levels: [Level]

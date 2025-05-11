@@ -212,10 +212,10 @@ import OrderedCollections
             let url = URL(fileURLWithPath: strategyFolder).appendingPathComponent(file)
             loadStrategy(into: registry, location: url.path())
         }
-        registry.register(strategyType: DoNothingStrategy.self, name: "Viewing only")
-        registry.register(strategyType: SurpriseBarStrategy.self, name: "Surprise Bar")
-        registry.register(strategyType: ORB30Strategy.self, name: "ORB 30")
-        registry.register(strategyType: FollowMovingAverageStrategy.self, name: "Follow MVA")
+        registry.register(strategyType: DoNothingStrategy.self)
+        registry.register(strategyType: SurpriseBarStrategy.self)
+        registry.register(strategyType: ORB30Strategy.self)
+        registry.register(strategyType: FollowMovingAverageStrategy.self)
     }
     
     @MainActor
@@ -224,7 +224,7 @@ import OrderedCollections
         print("🔵 loading: ", strategyNames, fullPath)
         for strategyName in strategyNames {
             if let strategyType = loadStrategy(from: fullPath, strategyName: strategyName) {
-                registry.register(strategyType: strategyType, name: strategyName)
+                registry.register(strategyType: strategyType)
                 print("✅ Successfully registered strategy: \(strategyName)")
             } else {
                 print("❌ Failed to load strategy: \(strategyName)")

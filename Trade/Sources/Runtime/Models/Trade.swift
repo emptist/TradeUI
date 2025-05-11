@@ -9,7 +9,10 @@ public struct Trade: Sendable {
     public var signal: Signal
     
     public var isLong: Bool {
-        signal  == .buy
+        switch signal {
+        case .buy: true
+        case .sell: false
+        }
     }
     
     public init(entryBar: Klines, signal: Signal, price: Double, stopPrice: Double, units: Double) {
