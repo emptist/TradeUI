@@ -12,7 +12,7 @@ public struct StrategyCheckList: View {
     public var body: some View {
         HStack {
             confidenceView(strategy: strategy)
-            Spacer(minLength: 0)
+            Divider().frame(height: 16)
             ForEach(Array(strategy.patternInformation.keys.sorted()), id: \.self) { key in
                 checkItem(name: key) { strategy.patternInformation[key] ?? false }
             }

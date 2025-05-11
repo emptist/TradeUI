@@ -25,14 +25,12 @@ public struct WatcherView: View {
     public var body: some View {
         if let watcher {
             VStack {
-                VStack {
-                    StrategyQuoteView(
-                        watcher: watcher,
-                        showActions: showActions
-                    )
-                    if let strategy {
-                        StrategyCheckList(strategy: strategy)
-                    }
+                StrategyQuoteView(
+                    watcher: watcher,
+                    showActions: showActions
+                )
+                if let strategy {
+                    StrategyCheckList(strategy: strategy)
                 }
                 if showChart, let strategy, let interval {
                     StrategyChart(
