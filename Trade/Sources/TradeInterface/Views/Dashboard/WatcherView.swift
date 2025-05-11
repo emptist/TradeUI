@@ -31,15 +31,16 @@ public struct WatcherView: View {
                             watcher: watcher,
                             showActions: showActions
                         )
-                        .frame(width: geometry.size.width * 5.0/7.0, height: geometry.size.height)
+                        .frame(width: geometry.size.width * 4.0/7.0, height: geometry.size.height)
                         Group {
                             if let strategy {
+                                confidenceView(strategy: strategy)
                                 StrategyCheckList(strategy: strategy)
                             } else {
                                 Spacer()
                             }
                         }
-                        .frame(width: geometry.size.width * 2.0/7.0, height: geometry.size.height)
+                        .frame(width: geometry.size.width * 3.0/7.0, height: geometry.size.height)
                     }
                 }
                 .frame(height: 32)
@@ -58,6 +59,32 @@ public struct WatcherView: View {
         }
     }
 
+    @ViewBuilder
+    private func confidenceView(strategy: any Strategy) -> some View {
+        VStack(alignment: .center, spacing: 4) {
+            if strategy.patternIdentified != nil {
+                Text("Confidence")
+                    .lineLimit(1)
+                    .foregroundColor(.white.opacity(0.4))
+                    .font(.caption)
+            }
+            switch strategy.patternIdentified {
+            case let .buy(confidence):
+                Text("\(confidence * 100)%%")
+                    .lineLimit(1)
+                    .foregroundColor(.green)
+                    .font(.subheadline)
+            case let .sell(confidence):
+                Text("\(confidence * 100)%%")
+                    .lineLimit(1)
+                    .foregroundColor(.red)
+                    .font(.subheadline)
+            default:
+                EmptyView()
+            }
+        }
+    }
+    
     // MARK: - Async Fetching
     
     private func fetchWatcherState() async {

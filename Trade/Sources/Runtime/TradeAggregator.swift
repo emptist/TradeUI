@@ -64,6 +64,15 @@ public final class TradeAggregator: Hashable {
                 .max(by: { $0.value.count < $1.value.count }) ?? (nil, [])
             
             if let confirmedSignal = majoritySignal, matchingRequests.count >= minConfirmations {
+                let avgConfidence = matchingRequests
+                    .compactMap { $0.1?.confidence }
+                    .reduce(0, +) / Float(matchingRequests.count)
+                
+                guard avgConfidence >= 0.7 else {
+                    print("⚠️ Insufficient confidence (\(avgConfidence)) for signal \(confirmedSignal)")
+                    return
+                }
+                
                 let matchingRequest = tradeQueue.sync(flags: .barrier) { [weak self] in
                     self?.tradeSignals.first(where: { $0.contract.label == contractLabel })
                 }
