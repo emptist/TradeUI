@@ -81,7 +81,7 @@ struct DashboardView: View {
                 )
             }
             Divider()
-            suggestionView(contract: Instrument.APPL, interval: interval)
+            suggestionView(contract: Instrument.AAPL, interval: interval)
             suggestionView(contract: Instrument.NQ, interval: interval)
             suggestionView(contract: Instrument.ES, interval: interval)
             suggestionView(contract: Instrument.BTC, interval: interval)
