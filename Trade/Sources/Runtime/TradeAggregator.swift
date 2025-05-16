@@ -3,8 +3,8 @@ import Brokerage
 import TradingStrategy
 
 public final class TradeAggregator: Hashable {
-    public var isTradeEntryEnabled: Bool = false
-    public var isTradeExitEnabled: Bool = false
+    public var isTradeEntryEnabled: Bool = true
+    public var isTradeExitEnabled: Bool = true
     public var isTradeEntryNotificationEnabled: Bool = true
     public var isTradeExitNotificationEnabled: Bool = true
     public var minConfirmations: Int = 1
@@ -44,56 +44,79 @@ public final class TradeAggregator: Hashable {
     
     public func registerTradeSignal(_ request: Request) async {
         let strategy = await request.watcherState.getStrategy()
+        let timestamp = Date()
+        let symbol = request.symbol
+        let interval = request.interval
+
         patternInformationChangeAction?(strategy.patternInformation)
-        if let _ = strategy.patternIdentified {
-            let contractLabel = contract.label
-            
-            let alignedRequests: [(Request, Signal?)] =
-            await tradeQueue.sync(flags: .barrier) {
-                self.tradeSignals.insert(request)
-                return Array(self.tradeSignals)
-            }.asyncMap { req async in
-                let sig = await req.watcherState.getStrategy().patternIdentified
-                return (req, sig)
-            }
-            
-            // Count votes per signal
-            let groupedBySignal = Dictionary(grouping: alignedRequests, by: { $0.1 })
-            let (majoritySignal, matchingRequests) = groupedBySignal
-                .filter { $0.key != nil }
-                .max(by: { $0.value.count < $1.value.count }) ?? (nil, [])
-            
-            if let confirmedSignal = majoritySignal, matchingRequests.count >= minConfirmations {
-                let avgConfidence = matchingRequests
-                    .compactMap { $0.1?.confidence }
-                    .reduce(0, +) / Float(matchingRequests.count)
-                
-                guard avgConfidence >= 0.7 else {
-                    print("⚠️ Insufficient confidence (\(avgConfidence)) for signal \(confirmedSignal)")
-                    return
-                }
-                
-                let matchingRequest = tradeQueue.sync(flags: .barrier) { [weak self] in
-                    self?.tradeSignals.first(where: { $0.contract.label == contractLabel })
-                }
-                guard let matchingRequest else {
-                    print("🔴 Failure to find matching request")
-                    return
-                }
-                await enterTradeIfStrategyIsValidated(matchingRequest, signal: confirmedSignal)
-                tradeQueue.sync(flags: .barrier) { [weak self] in
-                    self?.tradeSignals = []
-                }
-            } else {
-                print("⏳ Waiting for more confirmations for \(contract): \(tradeSignals.count)/\(minConfirmations)")
-            }
-        } else {
+        guard let _ = strategy.patternIdentified else {
             tradeQueue.sync(flags: .barrier) { [weak self] in
                 _ = self?.tradeSignals.remove(request)
             }
+            return
         }
+
+        let contractLabel = contract.label
+        print("✉️ [\(symbol):\(interval) @ \(timestamp)] pattern identified for contract: \(contractLabel)")
+        
+        let alignedRequests: [(Request, Signal?)] =
+        await tradeQueue.sync(flags: .barrier) {
+            self.tradeSignals.insert(request)
+            return Array(self.tradeSignals)
+        }.asyncMap { req async in
+            let sig = await req.watcherState.getStrategy().patternIdentified
+            return (req, sig)
+        }
+
+        let totalSignals = alignedRequests.count
+        print("🧮 [\(symbol) @ \(timestamp)] Aligned requests: \(totalSignals)")
+
+        let groupedBySignal = Dictionary(grouping: alignedRequests, by: { $0.1 })
+        let (majoritySignal, matchingRequests) = groupedBySignal
+            .filter { $0.key != nil }
+            .max(by: { $0.value.count < $1.value.count }) ?? (nil, [])
+
+        guard let confirmedSignal = majoritySignal else {
+            print("⚠️ [\(symbol) @ \(timestamp)] No majority signal found.")
+            return
+        }
+
+        let confirmations = matchingRequests.count
+        print("🔍 [\(symbol) @ \(timestamp)] Majority signal: \(confirmedSignal), confirmations: \(confirmations)/\(minConfirmations)")
+
+        guard confirmations >= minConfirmations else {
+            print("⏳ [\(symbol) @ \(timestamp)] Not enough confirmations yet.")
+            return
+        }
+
+        let confidences = matchingRequests.compactMap { $0.1?.confidence }
+        let avgConfidence = confidences.reduce(0, +) / Float(confidences.count)
+        print("📈 [\(symbol) @ \(timestamp)] Signal confidences: \(confidences), average: \(avgConfidence)")
+
+        guard avgConfidence >= 0.7 else {
+            print("⚠️ [\(symbol) @ \(timestamp)] Confidence \(avgConfidence) too low (< 0.7). Aborting trade.")
+            return
+        }
+
+        let matchingRequest = tradeQueue.sync(flags: .barrier) { [weak self] in
+            self?.tradeSignals.first(where: { $0.contract.label == contractLabel })
+        }
+
+        guard let matchingRequest else {
+            print("🔴 [\(symbol) @ \(timestamp)] Could not find matching request to proceed.")
+            return
+        }
+
+        print("🚀 [\(symbol) @ \(timestamp)] Signal passed all checks. Entering trade.")
+        await enterTradeIfStrategyIsValidated(matchingRequest, signal: confirmedSignal)
+
+        tradeQueue.sync(flags: .barrier) { [weak self] in
+            self?.tradeSignals = []
+        }
+
         await manageActiveTrade(request)
     }
+
     
     private func enterTradeIfStrategyIsValidated(_ request: Request, signal: Signal) async {
         guard !Task.isCancelled else { return }

@@ -32,125 +32,67 @@ public struct Instrument: Codable, Contract {
 }
 
 extension Instrument {
-    // MARK: Equity
-    public static var CBA: Instrument {
-        Instrument(
-            type: "STK",
-            symbol: "CBA",
-            exchangeId: "ASX",
-            currency: "AUD"
-        )
-    }
-    
-    public static var APPL: Instrument {
-        Instrument(
-            type: "STK",
-            symbol: "AAPL",
-            exchangeId: "SMART",
-            currency: "USD"
-        )
-    }
-    
-    // MARK: Cryptocurrency
-    
-    public static var BTC: Instrument {
-        Instrument(
-            type: "CRYPTO",
-            symbol: "BTC",
-            exchangeId: "PAXOS",
-            currency: "USD"
-        )
-    }
-    
-    public static var ETH: Instrument {
-        Instrument(
-            type: "CRYPTO",
-            symbol: "ETH",
-            exchangeId: "PAXOS",
-            currency: "USD"
-        )
-    }
-    
-    // MARK: Futures
-    
-    /// NQ
-    public static var NQ: Instrument {
-        Instrument(
-            type: "FUT",
-            symbol: "NQM5",
-            exchangeId: "CME",
-            currency: "USD"
-        )
+    // MARK: Helper
+    private static func currentFuturesSymbol(base: String) -> String {
+        let calendar = Calendar(identifier: .gregorian)
+        let now = Date()
+        let year = calendar.component(.year, from: now) % 10
+        let month = calendar.component(.month, from: now)
+
+        // Determine current front month (March, June, Sep, Dec)
+        let codes = [3: "H", 6: "M", 9: "U", 12: "Z"]
+        let frontMonthCode = codes.first { $0.key >= month }?.value ?? "H"
+        return "\(base)\(frontMonthCode)\(year)"
     }
 
-    
-    /// Micro E-Mini S&P 500
+    // MARK: Equities
+    public static var CBA: Instrument {
+        Instrument(type: "STK", symbol: "CBA", exchangeId: "ASX", currency: "AUD")
+    }
+
+    public static var AAPL: Instrument {
+        Instrument(type: "STK", symbol: "AAPL", exchangeId: "SMART", currency: "USD")
+    }
+
+    // MARK: Cryptocurrency
+    public static var BTC: Instrument {
+        Instrument(type: "CRYPTO", symbol: "BTC", exchangeId: "PAXOS", currency: "USD")
+    }
+
+    public static var ETH: Instrument {
+        Instrument(type: "CRYPTO", symbol: "ETH", exchangeId: "PAXOS", currency: "USD")
+    }
+
+    // MARK: Futures
+    public static var NQ: Instrument {
+        Instrument(type: "FUT", symbol: currentFuturesSymbol(base: "NQ"), exchangeId: "CME", currency: "USD")
+    }
+
     public static var MES: Instrument {
-        Instrument(
-            type: "FUT",
-            symbol: "MESM5",
-            exchangeId: "CME",
-            currency: "USD"
-        )
+        Instrument(type: "FUT", symbol: currentFuturesSymbol(base: "MES"), exchangeId: "CME", currency: "USD")
     }
-    
-    /// E-Mini S&P 500
+
     public static var ES: Instrument {
-        Instrument(
-            type: "FUT",
-            symbol: "ESM5",
-            exchangeId: "CME",
-            currency: "USD"
-        )
+        Instrument(type: "FUT", symbol: currentFuturesSymbol(base: "ES"), exchangeId: "CME", currency: "USD")
     }
-    
-    /// Micro E-mini Russell 2000
+
     public static var M2K: Instrument {
-        Instrument(
-            type: "FUT",
-            symbol: "M2KM5",
-            exchangeId: "CME",
-            currency: "USD"
-        )
+        Instrument(type: "FUT", symbol: currentFuturesSymbol(base: "M2K"), exchangeId: "CME", currency: "USD")
     }
-    
-    /// E-Mini Russell 2000
+
     public static var RTY: Instrument {
-        Instrument(
-            type: "FUT",
-            symbol: "RTYM5",
-            exchangeId: "CME",
-            currency: "USD"
-        )
+        Instrument(type: "FUT", symbol: currentFuturesSymbol(base: "RTY"), exchangeId: "CME", currency: "USD")
     }
-    
-    // DAX® Futures
+
     public static var FDAX: Instrument {
-        Instrument(
-            type: "FUT",
-            symbol: "FDAX",
-            exchangeId: "EUREX",
-            currency: "EUR"
-        )
+        Instrument(type: "FUT", symbol: "FDAX", exchangeId: "EUREX", currency: "EUR")
     }
-    
-    // Mini-DAX® Futures
+
     public static var FDXM: Instrument {
-        Instrument(
-            type: "FUT",
-            symbol: "FDXM",
-            exchangeId: "EUREX",
-            currency: "EUR"
-        )
+        Instrument(type: "FUT", symbol: "FDXM", exchangeId: "EUREX", currency: "EUR")
     }
-    
-    //Micro-DAX® Futures
+
     public static var FDXS: Instrument {
-        Instrument(
-            type: "FUT",
-            symbol: "FDXS",
-            exchangeId: "EUREX",
-            currency: "EUR"
-        )
+        Instrument(type: "FUT", symbol: "FDXS", exchangeId: "EUREX", currency: "EUR")
     }
 }
