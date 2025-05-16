@@ -29,7 +29,7 @@ public struct DoNothingStrategy: Strategy {
         return nil
     }
     
-    public var patternInformation: [String: Bool] {
+    public var patternInformation: [String: Double] {
         return [:]
     }
 

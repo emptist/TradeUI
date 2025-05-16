@@ -29,12 +29,12 @@ public struct StrategyCheckList: View {
                 .font(.caption)
             switch strategy.patternIdentified {
             case let .buy(confidence):
-                Text("\(confidence * 100)%%")
+                Text("\(Int(confidence * 100))%")
                     .lineLimit(1)
                     .foregroundColor(.green)
                     .font(.subheadline)
             case let .sell(confidence):
-                Text("\(confidence * 100)%%")
+                Text("\(Int(confidence * 100))%")
                     .lineLimit(1)
                     .foregroundColor(.red)
                     .font(.subheadline)
