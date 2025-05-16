@@ -84,12 +84,7 @@ public struct ChartCanvasView: View {
         let lineWidth: Double = 0.8
 
         let formatter = DateFormatter()
-        var calendar = Foundation.Calendar(identifier: .gregorian)
-        let timezone = TimeZone(identifier: "America/New_York")!
-        calendar.timeZone = timezone
-        formatter.calendar = calendar
         formatter.dateFormat = "HH:mm\ndd.MM.yy"
-        formatter.timeZone = timezone
 
         var gridPath = Path()
         for i in 0...10 {
