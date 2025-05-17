@@ -174,14 +174,14 @@ public class InteractiveBrokers: @unchecked Sendable, Market {
     
     public func tradingHour(_ product: any Contract) async throws -> [TradingHour] {
         let details = try await contractDetails(product)
-        return details.tradingHours?.map {
+        return details.liquidHours?.map {
             TradingHour(open: $0.open, close: $0.close, status: $0.status.rawValue)
         } ?? []
     }
     
     public func unitFee(_ product: any Contract) async throws -> [TradingHour] {
         let details = try await contractDetails(product)
-        return details.tradingHours?.map {
+        return details.liquidHours?.map {
             TradingHour(open: $0.open, close: $0.close, status: $0.status.rawValue)
         } ?? []
     }

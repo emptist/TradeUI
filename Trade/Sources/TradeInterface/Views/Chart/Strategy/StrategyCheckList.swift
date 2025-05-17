@@ -14,7 +14,7 @@ public struct StrategyCheckList: View {
             confidenceView(strategy: strategy)
             Divider().frame(height: 16)
             ForEach(Array(strategy.patternInformation.keys.sorted()), id: \.self) { key in
-                checkItem(name: key) { strategy.patternInformation[key] ?? false }
+                checkItem(name: key) { strategy.patternInformation[key] ?? 0.0 }
             }
         }
         .padding(.horizontal)
@@ -29,14 +29,14 @@ public struct StrategyCheckList: View {
                 .font(.caption)
             switch strategy.patternIdentified {
             case let .buy(confidence):
-                Text("\(Int(confidence * 100))%")
+                Text("⬆️ \(Int(confidence * 100))%")
                     .lineLimit(1)
-                    .foregroundColor(.green)
+                    .foregroundColor(.blue)
                     .font(.subheadline)
             case let .sell(confidence):
-                Text("\(Int(confidence * 100))%")
+                Text("⬇️ \(Int(confidence * 100))%")
                     .lineLimit(1)
-                    .foregroundColor(.red)
+                    .foregroundColor(.blue)
                     .font(.subheadline)
             default:
                 Text("-")
@@ -47,14 +47,15 @@ public struct StrategyCheckList: View {
         }
     }
     
-    private func checkItem(name: String, _ condition: () -> Bool) -> some View {
-        let isFullfiled: Bool = condition()
+    private func checkItem(name: String, _ condition: () -> Double) -> some View {
+        let confidence = condition()
+        let isFullfiled: Bool = confidence >= 0.7
         return VStack(alignment: .center, spacing: 4) {
             Text(name)
                 .lineLimit(1)
                 .foregroundColor(.white.opacity(0.4))
                 .font(.caption)
-            Text(isFullfiled ? "✔︎" : "✕")
+            Text("\(Int(confidence * 100))% \(isFullfiled ? "✔︎" : "✕")")
                 .lineLimit(1)
                 .foregroundColor(isFullfiled ? .green : .red)
                 .font(.subheadline)

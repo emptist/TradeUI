@@ -18,7 +18,7 @@ public final class TradeAggregator: Hashable {
     private var getNextTradingAlertsAction: (() -> Annoucment?)?
     private var tradeEntryNotificationAction: ((_ trade: Trade, _ recentBar: Klines) -> Void)?
     private var tradeExitNotificationAction: ((_ trade: Trade, _ recentBar: Klines) -> Void)?
-    private var patternInformationChangeAction: ((_ patternInformation: [String: Bool]) -> Void)?
+    private var patternInformationChangeAction: ((_ patternInformation: [String: Double]) -> Void)?
     
     public init(
         contract: any Contract,
@@ -26,7 +26,7 @@ public final class TradeAggregator: Hashable {
         getNextTradingAlertsAction: (() -> Annoucment?)? = nil,
         tradeEntryNotificationAction: ((_ trade: Trade, _ recentBar: Klines) -> Void)? = nil,
         tradeExitNotificationAction: ((_ trade: Trade, _ recentBar: Klines) -> Void)? = nil,
-        patternInformationChangeAction: ((_ patternInformation: [String: Bool]) -> Void)? = nil
+        patternInformationChangeAction: ((_ patternInformation: [String: Double]) -> Void)? = nil
     ) {
         self.marketOrder = marketOrder
         self.contract = contract
