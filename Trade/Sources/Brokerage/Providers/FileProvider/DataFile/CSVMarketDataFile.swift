@@ -26,7 +26,7 @@ public final class CSVMarketDataFile: @unchecked Sendable, MarketDataFile {
         }
 
         if let lineData = fileHandle.readLine() {
-            let line = lineData.toString()
+            let line = lineData.toString()?.trimmingCharacters(in: .whitespacesAndNewlines)
             let components = line?.split(separator: delimiter).map { String($0) } ?? []
             guard components.count >= 6,
                   let _ = parseTimeInterval(components[0]),
@@ -40,7 +40,7 @@ public final class CSVMarketDataFile: @unchecked Sendable, MarketDataFile {
                 }
                 return
             }
-            let volume: Double? = components.count >= 7 ? Double(components[6]) : nil
+            let volume: Double? = (components.count >= 7) ? Double(components[6]) : nil
             let bar = Bar(
                 timeOpen: interval,
                 interval: barInterval,

@@ -7,6 +7,7 @@ public struct Trade: Sendable {
     public var stopPrice: Double
     public var units: Double
     public var signal: Signal
+    public var patternInformation: [String: Double]
     
     public var isLong: Bool {
         switch signal {
@@ -15,11 +16,12 @@ public struct Trade: Sendable {
         }
     }
     
-    public init(entryBar: Klines, signal: Signal, price: Double, stopPrice: Double, units: Double) {
+    public init(entryBar: Klines, signal: Signal, price: Double, stopPrice: Double, units: Double, patternInformation: [String: Double]) {
         self.entryBar = entryBar
         self.price = price
         self.stopPrice = stopPrice
         self.units = units
         self.signal = signal
+        self.patternInformation = patternInformation
     }
 }

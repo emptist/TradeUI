@@ -40,7 +40,7 @@ struct MessageView: View {
                     }
                     Button("Test") {
                         let bar = Bar(timeOpen: 0, interval: 0, priceOpen: 0, priceHigh: 0, priceLow: 0, priceClose: 0, volume: 0)
-                        let trade = Trade(entryBar: bar, signal: .buy(confidence: 1), price: 1, stopPrice: 2, units: 3)
+                        let trade = Trade(entryBar: bar, signal: .buy(confidence: 1), price: 1, stopPrice: 2, units: 3, patternInformation: [:])
                         trades.tradeAlertHandler?.sendAlert(trade, recentBar: bar)
                     }
                     .padding(.top, 5)
