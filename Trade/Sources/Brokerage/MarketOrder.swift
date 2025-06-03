@@ -23,7 +23,7 @@ public protocol MarketOrder: Sendable {
         contract product: any Contract,
         action: OrderAction,
         price: Double,
-        trailStopPrice: Double,
+        targets: (takeProfit: Double?, stopLoss: Double?),
         quantity: Double
     ) async throws
     
@@ -31,7 +31,7 @@ public protocol MarketOrder: Sendable {
         contract product: any Contract,
         action: OrderAction,
         price: Double,
-        stopPrice: Double,
+        targets: (takeProfit: Double?, stopLoss: Double?),
         quantity: Double
     ) async throws
 }

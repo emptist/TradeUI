@@ -39,7 +39,7 @@ extension InteractiveBrokers {
         contract: IBContract,
         action: IBAction,
         price: Double,
-        stopPrice: Double,
+        targets: (takeProfit: Double?, stopLoss: Double?),
         quantity: Double
     ) throws -> AsyncStream<any OrderEvent> {
         guard let account = account?.name else {
@@ -47,6 +47,8 @@ extension InteractiveBrokers {
         }
         
         let group = UUID().uuidString
+        let opposite = action == .buy ? IBAction.sell : .buy
+        var orders: [IBOrder] = []
         
         var limitOrder = IBOrder.limit(
             price,
@@ -59,49 +61,48 @@ extension InteractiveBrokers {
         limitOrder.transmit = false
         limitOrder.tif = .goodTilDate
         limitOrder.goodTillDate = Date().addingTimeInterval(8)
+        orders.append(limitOrder)
         
-        var stopOrder = IBOrder.stop(
-            stopPrice,
-            action: action == .buy ? .sell : .buy,
-            quantity: quantity,
-            contract: contract,
-            account: account,
-            validUntil: .day,
-            hidden: true,
-            extendedTrading: true
-        )
-        
-        stopOrder.orderID = nextOrderID
-        stopOrder.parentId = limitOrder.orderID
-        stopOrder.ocaGroup = group
-        stopOrder.transmit = true
-        
-        return AsyncStream { continuation in
-            let task1 = Task { [limitOrder] in
-                let stream = try await streamOrder(limitOrder)
-                for try await event in stream {
-                    continuation.yield(event)
-                }
-            }
-
-            let task2 = Task { [stopOrder] in
-                let stream = try await streamOrder(stopOrder)
-                for try await event in stream {
-                    continuation.yield(event)
-                }
-            }
-
-            continuation.onTermination = { _ in
-                task1.cancel()
-                task2.cancel()
-            }
-
-            Task {
-                _ = await task1.result
-                _ = await task2.result
-                continuation.finish()
-            }
+        if let stopLoss = targets.stopLoss {
+            var stopOrder = IBOrder.stop(
+                stopLoss,
+                action: opposite,
+                quantity: quantity,
+                contract: contract,
+                account: account,
+                validUntil: .day,
+                hidden: true,
+                extendedTrading: true
+            )
+            
+            stopOrder.orderID = nextOrderID
+            stopOrder.parentId = limitOrder.orderID
+            stopOrder.ocaGroup = group
+            stopOrder.ocaType = .cancelBlock
+            stopOrder.transmit = false
+            orders.append(stopOrder)
         }
+        
+        if let takeProfit = targets.takeProfit {
+            var tpOrder = IBOrder.limit(
+                takeProfit,
+                action: opposite,
+                quantity: quantity,
+                contract: contract,
+                account: account
+            )
+            tpOrder.orderID = nextOrderID
+            tpOrder.parentId = limitOrder.orderID
+            tpOrder.ocaGroup = group
+            tpOrder.ocaType = .cancelBlock
+            tpOrder.transmit = false
+            orders.append(tpOrder)
+        }
+        
+        if let lastIndex = orders.indices.last {
+            orders[lastIndex].transmit = true
+        }
+        return streamOrders(orders)
     }
     
     @discardableResult
@@ -109,7 +110,7 @@ extension InteractiveBrokers {
         contract: IBContract,
         action: IBAction,
         price: Double,
-        trailStopPrice: Double,
+        targets: (takeProfit: Double?, stopLoss: Double?),
         quantity: Double
     ) throws -> AsyncStream<any OrderEvent> {
         guard let account = account?.name else {
@@ -117,50 +118,30 @@ extension InteractiveBrokers {
         }
         
         let group = UUID().uuidString
+        var orders: [IBOrder] = []
         
         var limitOrder = IBOrder.limit(price, action: action, quantity: quantity, contract: contract, account: account)
         limitOrder.orderID = nextOrderID
         limitOrder.transmit = false
+        orders.append(limitOrder)
         
-        var stopOrder = IBOrder.trailingStop(
-            stop: trailStopPrice,
-            limit: price,
-            action: action == .buy ? .sell : .buy,
-            quantity: quantity,
-            contract: contract,
-            account: account
-        )
-        stopOrder.orderID = nextOrderID
-        stopOrder.parentId = limitOrder.orderID
-        stopOrder.ocaGroup = group
-        stopOrder.transmit = true
-        
-        return AsyncStream { continuation in
-            let task1 = Task { [limitOrder] in
-                let stream = try await streamOrder(limitOrder)
-                for try await event in stream {
-                    continuation.yield(event)
-                }
-            }
-
-            let task2 = Task { [stopOrder] in
-                let stream = try await streamOrder(stopOrder)
-                for try await event in stream {
-                    continuation.yield(event)
-                }
-            }
-
-            continuation.onTermination = { _ in
-                task1.cancel()
-                task2.cancel()
-            }
-
-            Task {
-                _ = await task1.result
-                _ = await task2.result
-                continuation.finish()
-            }
+        if let stopLoss = targets.stopLoss {
+            var stopOrder = IBOrder.trailingStop(
+                stop: stopLoss,
+                limit: price,
+                action: action == .buy ? .sell : .buy,
+                quantity: quantity,
+                contract: contract,
+                account: account
+            )
+            stopOrder.orderID = nextOrderID
+            stopOrder.parentId = limitOrder.orderID
+            stopOrder.ocaGroup = group
+            stopOrder.transmit = true
+            orders.append(stopOrder)
         }
+        
+        return streamOrders(orders)
     }
     
     private func streamOrder(_ order: IBOrder) async throws -> AsyncStream<any OrderEvent> {
@@ -181,6 +162,32 @@ extension InteractiveBrokers {
                         return
                     default: continue
                     }
+                }
+                continuation.finish()
+            }
+        }
+    }
+    
+    private func streamOrders(_ orders: [IBOrder]) -> AsyncStream<any OrderEvent> {
+        AsyncStream { continuation in
+            var tasks: [Task<Void, Error>] = []
+
+            for order in orders {
+                tasks.append(Task { [order] in
+                    let stream = try await streamOrder(order)
+                    for try await event in stream {
+                        continuation.yield(event)
+                    }
+                })
+            }
+
+            continuation.onTermination = { [tasks] _ in
+                tasks.forEach { $0.cancel() }
+            }
+
+            Task {
+                for task in tasks {
+                    _ = await task.result
                 }
                 continuation.finish()
             }

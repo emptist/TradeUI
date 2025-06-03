@@ -127,7 +127,7 @@ struct OrderView: View {
                                 contract: contract,
                                 action: .buy,
                                 price: bar.priceHigh,
-                                trailStopPrice: bar.priceHigh - (bar.body * Double(stopLoss) / 100.0),
+                                targets: (nil, bar.priceHigh - (bar.body * Double(stopLoss) / 100.0)),
                                 quantity: Double(contractNumber)
                             )
                         } catch {
@@ -145,7 +145,7 @@ struct OrderView: View {
                                 contract: contract,
                                 action: .sell,
                                 price: bar.priceLow,
-                                trailStopPrice: bar.priceLow + (bar.body * Double(stopLoss) / 100.0),
+                                targets: (nil, bar.priceLow + (bar.body * Double(stopLoss) / 100.0)),
                                 quantity: Double(contractNumber)
                             )
                         } catch {

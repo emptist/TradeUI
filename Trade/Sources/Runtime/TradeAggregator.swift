@@ -111,12 +111,12 @@ public final class TradeAggregator: Hashable {
                 feePerUnit: 50,
                 nextAnnoucment: nil
             )
-            let initialStopLoss = strategy.adjustStopLoss(signal: signal, entryBar: entryBar) ?? 0
+            let targets = strategy.exitTargets(for: signal, entryBar: entryBar)
             let trade = Trade(
                 entryBar: entryBar,
                 signal: signal,
                 price: entryBar.priceClose,
-                stopPrice: initialStopLoss,
+                targets: targets,
                 units: Double(units),
                 patternInformation: strategy.patternInformation
             )
@@ -134,12 +134,11 @@ public final class TradeAggregator: Hashable {
                 nextAnnoucment: nextEvent
             )
             guard units > 0 else { return }
-            let initialStopLoss = strategy.adjustStopLoss(signal: signal, entryBar: entryBar)
+            let targets = strategy.exitTargets(for: signal, entryBar: entryBar)
             print("✅ enterTradeIfStrategyIsValidated signal: \(signal)")
             print("✅ enterTradeIfStrategyIsValidated symbol: \(request.symbol): interval: \(request.interval)")
             print("✅ enterTradeIfStrategyIsValidated units: ", units)
-            print("✅ enterTradeIfStrategyIsValidated stopLoss: ", initialStopLoss ?? 0)
-            guard let initialStopLoss else { return }
+            print("✅ enterTradeIfStrategyIsValidated targets: ", targets)
             
             await evaluateMarketCoonditions(
                 trade:
@@ -147,7 +146,7 @@ public final class TradeAggregator: Hashable {
                         entryBar: entryBar,
                         signal: signal,
                         price: entryBar.priceClose,
-                        stopPrice: initialStopLoss,
+                        targets: targets,
                         units: Double(units),
                         patternInformation: strategy.patternInformation
                     ),
@@ -188,7 +187,7 @@ public final class TradeAggregator: Hashable {
             entryBar: trade.entryBar,
             signal: trade.signal,
             price: orderPrice,
-            stopPrice: trade.stopPrice,
+            targets: trade.targets,
             units: trade.units,
             patternInformation: trade.patternInformation
         )
@@ -216,7 +215,7 @@ public final class TradeAggregator: Hashable {
             contract: contract,
             action: side,
             price: trade.price,
-            stopPrice: trade.stopPrice,
+            targets: trade.targets,
             quantity: trade.units
         )
     }
@@ -232,18 +231,23 @@ public final class TradeAggregator: Hashable {
         else { return }
         
         let nextEvent = getNextTradingAlertsAction?()
-        let shouldExit = strategy.shouldExit(signal: activeTrade.signal, entryBar: activeTrade.entryBar, nextAnnoucment: nextEvent)
         let isLongTrade = activeTrade.isLong
         
-        let wouldHitStopLoss = isLongTrade
-            ? activeTrade.stopPrice >= recentBar.priceClose
-            : activeTrade.stopPrice <= recentBar.priceClose
-
-        if shouldExit, isTradeExitNotificationEnabled {
-            tradeExitNotificationAction?(activeTrade, recentBar)
-        }
+        let wouldHitStopLoss: Bool = {
+            guard let stopLoss = activeTrade.targets.stopLoss else { return false }
+            return isLongTrade
+                ? recentBar.priceLow <= stopLoss
+                : recentBar.priceHigh >= stopLoss
+        }()
         
-        if (shouldExit || wouldHitStopLoss) {
+        let wouldHitTakeProfit: Bool = {
+            guard let takeProfit = activeTrade.targets.takeProfit else { return false }
+            return isLongTrade
+                ? recentBar.priceHigh >= takeProfit
+                : recentBar.priceLow <= takeProfit
+        }()
+
+        if (wouldHitStopLoss || wouldHitTakeProfit) {
             let quote = await request.watcherState.getQuote()
             let exitPrice = quote?.lastPrice ?? recentBar.priceClose
 
@@ -257,29 +261,13 @@ public final class TradeAggregator: Hashable {
                     entryPrice: activeTrade.price,
                     exitPrice: exitPrice,
                     profit: profit,
-                    stopLossHit: wouldHitStopLoss,
+                    targets: (wouldHitTakeProfit, wouldHitStopLoss),
                     confidence: activeTrade.signal.confidence,
                     patternInformation: activeTrade.patternInformation
                 )
                 stats.add(result)
                 
                 await request.watcherState.updateActiveTrade(nil)
-            } else if isTradeExitEnabled {
-                guard let account = marketOrder?.account else { return }
-                guard let position = account.positions.first(where: { $0.label == contract.label }) else { return }
-
-                do {
-                    try await marketOrder?.makeLimitOrder(
-                        contract: contract,
-                        action: isLongTrade ? .sell : .buy,
-                        price: exitPrice,
-                        quantity: position.quantity
-                    )
-                    print("❌ Exiting trade, exitPrice: \(exitPrice)")
-                    await request.watcherState.updateActiveTrade(nil)
-                } catch {
-                    print("🔴 Error exiting trade: \(error)")
-                }
             }
         }
     }

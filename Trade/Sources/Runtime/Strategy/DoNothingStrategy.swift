@@ -49,7 +49,7 @@ public struct DoNothingStrategy: Strategy {
         return true
     }
     
-    public func adjustStopLoss(signal: Signal, entryBar: Klines) -> Double? {
-        return nil
+    public func exitTargets(for signal: Signal, entryBar: Klines) -> (takeProfit: Double?, stopLoss: Double?) {
+        return (nil, nil)
     }
 }

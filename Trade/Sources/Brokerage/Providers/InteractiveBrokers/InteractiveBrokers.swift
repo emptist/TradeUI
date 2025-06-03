@@ -288,14 +288,14 @@ public class InteractiveBrokers: @unchecked Sendable, Market {
         contract product: any Contract,
         action: OrderAction,
         price: Double,
-        trailStopPrice: Double,
+        targets: (takeProfit: Double?, stopLoss: Double?),
         quantity: Double
     ) async throws {
         try limitWithTrailingStopOrder(
             contract: self.contract(product),
             action: action == .buy ? .buy : .sell,
             price: price,
-            trailStopPrice: trailStopPrice,
+            targets: targets,
             quantity: quantity
         )
     }
@@ -304,14 +304,14 @@ public class InteractiveBrokers: @unchecked Sendable, Market {
         contract product: any Contract,
         action: OrderAction,
         price: Double,
-        stopPrice: Double,
+        targets: (takeProfit: Double?, stopLoss: Double?),
         quantity: Double
     ) async throws {
         try limitWithStopOrder(
             contract: self.contract(product),
             action: action == .buy ? .buy : .sell,
             price: price,
-            stopPrice: stopPrice,
+            targets: targets,
             quantity: quantity
         )
     }

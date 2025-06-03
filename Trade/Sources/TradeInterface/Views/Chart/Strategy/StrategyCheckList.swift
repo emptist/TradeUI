@@ -55,7 +55,7 @@ public struct StrategyCheckList: View {
                 .lineLimit(1)
                 .foregroundColor(.white.opacity(0.4))
                 .font(.caption)
-            Text("\(Int(confidence * 100))% \(isFullfiled ? "✔︎" : "✕")")
+            Text("\(Int(confidence * 100))%")
                 .lineLimit(1)
                 .foregroundColor(isFullfiled ? .green : .red)
                 .font(.subheadline)
