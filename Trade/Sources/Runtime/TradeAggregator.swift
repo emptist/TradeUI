@@ -75,7 +75,11 @@ public final class TradeAggregator: Hashable {
                 }
                 
                 let matchingRequest = tradeQueue.sync(flags: .barrier) { [weak self] in
-                    self?.tradeSignals.first(where: { $0.contract.label == contractLabel })
+                    let match = self?.tradeSignals.first(where: { $0.contract.label == contractLabel })
+                    if match != nil {
+                        self?.tradeSignals.removeAll()
+                    }
+                    return match
                 }
                 guard let matchingRequest else {
                     print("🔴 Failure to find matching request")
