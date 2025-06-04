@@ -1,6 +1,8 @@
 import Foundation
 
 public struct TradeResult {
+    public let entryTime: TimeInterval
+    public let exitTime: TimeInterval
     public let isLong: Bool
     public let entryPrice: Double
     public let exitPrice: Double
@@ -8,6 +10,22 @@ public struct TradeResult {
     public let targets: (takeProfit: Bool, stopLoss: Bool)
     public let confidence: Float
     public let patternInformation: [String: Double]
+    
+    public var tradeDuration: String {
+        let seconds = Int(exitTime - entryTime)
+        switch seconds {
+        case ..<60: return "\(seconds)s ago"
+        case ..<3600: return "\(seconds / 60)m ago"
+        case ..<86_400: return "\(seconds / 3600)h ago"
+        case ..<604_800: return "\(seconds / 86_400)d ago"
+        default:
+            if seconds < 1_000_000 {
+                return String(format: "%.1fk s ago", Double(seconds) / 1_000)
+            } else {
+                return String(format: "%.1fM s ago", Double(seconds) / 1_000_000)
+            }
+        }
+    }
 }
 
 public final class TradeStats {
@@ -67,7 +85,7 @@ public final class TradeStats {
 
     private func printTrade(_ result: TradeResult) {
         let direction = result.isLong ? "Long" : "Short"
-        print("❌ \(direction) profit: \(result.profit) entry: \(result.entryPrice), exit: \(result.exitPrice), targets: \(result.targets) confidence: \(result.confidence) info: \(result.patternInformation)")
+        print("❌ \(direction) profit: \(result.profit) time: \(result.tradeDuration) entry: \(result.entryPrice), exit: \(result.exitPrice), targets: \(result.targets) confidence: \(result.confidence) info: \(result.patternInformation)")
     }
 
     public func printStats() {

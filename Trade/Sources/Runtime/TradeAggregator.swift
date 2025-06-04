@@ -261,6 +261,8 @@ public final class TradeAggregator: Hashable {
                     : activeTrade.price - exitPrice
                 
                 let result = TradeResult(
+                    entryTime: activeTrade.entryBar.timeOpen,
+                    exitTime: recentBar.timeOpen,
                     isLong: isLongTrade,
                     entryPrice: activeTrade.price,
                     exitPrice: exitPrice,
