@@ -81,11 +81,10 @@ struct DashboardView: View {
                 )
             }
             Divider()
-            suggestionView(contract: Instrument.AAPL, interval: interval)
+            suggestionView(contract: Instrument.YM, interval: interval)
             suggestionView(contract: Instrument.NQ, interval: interval)
             suggestionView(contract: Instrument.ES, interval: interval)
-            suggestionView(contract: Instrument.BTC, interval: interval)
-            suggestionView(contract: Instrument.FDAX, interval: interval)
+            suggestionView(contract: Instrument.RTY, interval: interval)
         }
         .searchable(text: $viewModel.symbol)
         .onChangeDebounced(of: viewModel.symbol, interval: .seconds(0.5)) {

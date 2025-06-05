@@ -40,8 +40,8 @@ extension Instrument {
         let month = calendar.component(.month, from: now)
 
         // Determine current front month (March, June, Sep, Dec)
-        let codes = [3: "H", 6: "M", 9: "U", 12: "Z"]
-        let frontMonthCode = codes.first { $0.key >= month }?.value ?? "H"
+        let codes = [(3, "H"), (6, "M"), (9, "U"), (12, "Z")]
+        let frontMonthCode = codes.first { $0.0 >= month }?.1 ?? "H"
         return "\(base)\(frontMonthCode)\(year)"
     }
 
@@ -78,6 +78,10 @@ extension Instrument {
 
     public static var M2K: Instrument {
         Instrument(type: "FUT", symbol: currentFuturesSymbol(base: "M2K"), exchangeId: "CME", currency: "USD")
+    }
+    
+    public static var YM: Instrument {
+        Instrument(type: "FUT", symbol: currentFuturesSymbol(base: "YM"), exchangeId: "SMART", currency: "USD")
     }
 
     public static var RTY: Instrument {
