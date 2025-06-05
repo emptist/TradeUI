@@ -2,6 +2,7 @@ import Foundation
 import TradingStrategy
 
 public struct Trade: Sendable {
+    public var id: UUID
     public var entryBar: Klines
     public var price: Double
     public var targets: (takeProfit: Double?, stopLoss: Double?)
@@ -17,6 +18,7 @@ public struct Trade: Sendable {
     }
     
     public init(
+        id: UUID = UUID(),
         entryBar: Klines,
         signal: Signal,
         price: Double,
@@ -24,6 +26,7 @@ public struct Trade: Sendable {
         units: Double,
         patternInformation: [String: Double]
     ) {
+        self.id = id
         self.entryBar = entryBar
         self.price = price
         self.targets = targets

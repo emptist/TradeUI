@@ -26,6 +26,13 @@ public final class Watcher: @unchecked Sendable, Identifiable {
     private var quoteTask: Task<Void, Never>?
     private var marketDataTask: Task<Void, Never>?
     private var tradeTask: Task<Void, Never>?
+    private var fileData: MarketDataFileProvider?
+    public var pullNext: Bool = true {
+        didSet {
+            guard !oldValue, pullNext else { return }
+            pull()
+        }
+    }
     
     deinit {
         tradeAggregator = nil
@@ -51,6 +58,7 @@ public final class Watcher: @unchecked Sendable, Identifiable {
         self.userInfo = userInfo
         self.strategyType = strategyType
         self.tradeAggregator = tradeAggregator
+        self.fileData = marketData as? MarketDataFileProvider
         
         self.watcherState = WatcherStateActor(initialStrategy: strategyType.init(candles: []))
         self.quoteTask = Task { [weak self, marketData] in
@@ -179,13 +187,22 @@ public final class Watcher: @unchecked Sendable, Identifiable {
                     )
                 )
                 
-                if let fileData = marketData as? MarketDataFileProvider,
-                   let url = userInfo[MarketDataKey.snapshotFileURL.rawValue] as? URL {
-                    fileData.pull(url: url)
+                if pullNext {
+//                    pullNext = !(newStrategy.patternIdentified != nil)
+                    if let fileData = marketData as? MarketDataFileProvider,
+                       let url = userInfo[MarketDataKey.snapshotFileURL.rawValue] as? URL {
+                        fileData.pull(url: url)
+                    }
                 }
             }
         } catch {
             print("Market data stream error: \(error)")
+        }
+    }
+    
+    private func pull() {
+        if let fileData, let url = userInfo[MarketDataKey.snapshotFileURL.rawValue] as? URL {
+            fileData.pull(url: url)
         }
     }
     
@@ -232,7 +249,6 @@ public final class Watcher: @unchecked Sendable, Identifiable {
     public actor WatcherStateActor {
         private var quote: Quote?
         private var strategy: Strategy
-        private var activeTrade: Trade?
         private var tradingHours: [TradingHour] = []
         
         init(initialStrategy: Strategy) {
@@ -254,15 +270,7 @@ public final class Watcher: @unchecked Sendable, Identifiable {
         public func updateStrategy(_ newStrategy: Strategy) {
             self.strategy = newStrategy
         }
-        
-        public func getActiveTrade() -> Trade? {
-            return activeTrade
-        }
-        
-        public func updateActiveTrade(_ trade: Trade?) {
-            self.activeTrade = trade
-        }
-        
+    
         public func updateTradingHours(_ tradingHours: [TradingHour]) {
             self.tradingHours = tradingHours
         }

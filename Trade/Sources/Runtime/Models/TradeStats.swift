@@ -14,15 +14,15 @@ public struct TradeResult {
     public var tradeDuration: String {
         let seconds = Int(exitTime - entryTime)
         switch seconds {
-        case ..<60: return "\(seconds)s ago"
-        case ..<3600: return "\(seconds / 60)m ago"
-        case ..<86_400: return "\(seconds / 3600)h ago"
-        case ..<604_800: return "\(seconds / 86_400)d ago"
+        case ..<60: return "\(seconds)s"
+        case ..<3600: return "\(seconds / 60)m"
+        case ..<86_400: return "\(seconds / 3600)h"
+        case ..<604_800: return "\(seconds / 86_400)d"
         default:
             if seconds < 1_000_000 {
-                return String(format: "%.1fk s ago", Double(seconds) / 1_000)
+                return String(format: "%.1fk s", Double(seconds) / 1_000)
             } else {
-                return String(format: "%.1fM s ago", Double(seconds) / 1_000_000)
+                return String(format: "%.1fM s", Double(seconds) / 1_000_000)
             }
         }
     }

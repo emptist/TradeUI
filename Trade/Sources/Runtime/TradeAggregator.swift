@@ -2,6 +2,8 @@ import Foundation
 import Brokerage
 import TradingStrategy
 
+
+
 public final class TradeAggregator: Hashable {
     public var isTradeEntryEnabled: Bool = true
     public var isTradeExitEnabled: Bool = true
@@ -13,6 +15,7 @@ public final class TradeAggregator: Hashable {
     public let contract: any Contract
     private var marketOrder: MarketOrder?
     private var tradeSignals: Set<Request> = []
+    private var activeTrades: [UUID: Trade] = [:]
     private let stats = TradeStats()
     private let tradeQueue = DispatchQueue(label: "TradeAggregatorQueue", attributes: .concurrent)
     
@@ -97,13 +100,13 @@ public final class TradeAggregator: Hashable {
                 _ = self?.tradeSignals.remove(request)
             }
         }
-        await manageActiveTrade(request)
+        if request.isSimulation {
+            await manageActiveTrade(request)
+        }
     }
     
     private func enterTradeIfStrategyIsValidated(_ request: Request, signal: Signal) async {
         guard !Task.isCancelled else { return }
-        let hasNoActiveTrade = await request.watcherState.getActiveTrade() == nil
-        guard hasNoActiveTrade else { return }
         let strategy = await request.watcherState.getStrategy()
         guard let _ = strategy.patternIdentified, let entryBar = strategy.candles.last else { return }
         
@@ -124,10 +127,7 @@ public final class TradeAggregator: Hashable {
                 units: Double(units),
                 patternInformation: strategy.patternInformation
             )
-            await request.watcherState.updateActiveTrade(trade)
-//            print("🟤 enter trade: ", trade)
-//            print("🟤 signal: \(signal)")
-//            print("🟤 entryBar.isLong: \(trade.entryBar.isLong)")
+            activeTrades[trade.id] = trade
         } else if let account = marketOrder?.account {
             let nextEvent = getNextTradingAlertsAction?()
             let units = strategy.shouldEnterWitUnitCount(
@@ -169,9 +169,6 @@ public final class TradeAggregator: Hashable {
             timeUntilClose > (1_800 * 6)
         else { return }
         
-        let hasNoActiveTrade = await request.watcherState.getActiveTrade() == nil
-        guard hasNoActiveTrade else { return }
-
         guard let quote = await request.watcherState.getQuote() else {
             print("⚠️ No quote available, cannot enter trade.")
             return
@@ -188,6 +185,7 @@ public final class TradeAggregator: Hashable {
         }
 
         let tradeWithQuotePrice = Trade(
+            id: trade.id,
             entryBar: trade.entryBar,
             signal: trade.signal,
             price: orderPrice,
@@ -196,7 +194,7 @@ public final class TradeAggregator: Hashable {
             patternInformation: trade.patternInformation
         )
 
-        await request.watcherState.updateActiveTrade(tradeWithQuotePrice)
+        activeTrades[trade.id] = tradeWithQuotePrice
 
         if isTradeEntryNotificationEnabled {
             tradeEntryNotificationAction?(tradeWithQuotePrice, tradeWithQuotePrice.entryBar)
@@ -228,52 +226,50 @@ public final class TradeAggregator: Hashable {
         guard !Task.isCancelled else { return }
         let strategy = await request.watcherState.getStrategy()
         
-        guard
-            let activeTrade = await request.watcherState.getActiveTrade(),
-            let recentBar = strategy.candles.last,
-            activeTrade.entryBar.timeOpen != recentBar.timeOpen
-        else { return }
+        guard let recentBar = strategy.candles.last else { return }
         
-        let nextEvent = getNextTradingAlertsAction?()
-        let isLongTrade = activeTrade.isLong
-        
-        let wouldHitStopLoss: Bool = {
-            guard let stopLoss = activeTrade.targets.stopLoss else { return false }
-            return isLongTrade
-                ? recentBar.priceLow <= stopLoss
-                : recentBar.priceHigh >= stopLoss
-        }()
-        
-        let wouldHitTakeProfit: Bool = {
-            guard let takeProfit = activeTrade.targets.takeProfit else { return false }
-            return isLongTrade
-                ? recentBar.priceHigh >= takeProfit
-                : recentBar.priceLow <= takeProfit
-        }()
+        let trades = Array(activeTrades.values)
+        for activeTrade in trades {
+            let isLongTrade = activeTrade.isLong
+            
+            let wouldHitStopLoss: Bool = {
+                guard let stopLoss = activeTrade.targets.stopLoss else { return false }
+                return isLongTrade
+                    ? recentBar.priceLow <= stopLoss
+                    : recentBar.priceHigh >= stopLoss
+            }()
+            
+            let wouldHitTakeProfit: Bool = {
+                guard let takeProfit = activeTrade.targets.takeProfit else { return false }
+                return isLongTrade
+                    ? recentBar.priceHigh >= takeProfit
+                    : recentBar.priceLow <= takeProfit
+            }()
 
-        if (wouldHitStopLoss || wouldHitTakeProfit) {
-            let quote = await request.watcherState.getQuote()
-            let exitPrice = quote?.lastPrice ?? recentBar.priceClose
+            if (wouldHitStopLoss || wouldHitTakeProfit) {
+                let quote = await request.watcherState.getQuote()
+                let exitPrice = quote?.lastPrice ?? recentBar.priceClose
 
-            if request.isSimulation {
-                let profit = isLongTrade
-                    ? exitPrice - activeTrade.price
-                    : activeTrade.price - exitPrice
-                
-                let result = TradeResult(
-                    entryTime: activeTrade.entryBar.timeOpen,
-                    exitTime: recentBar.timeOpen,
-                    isLong: isLongTrade,
-                    entryPrice: activeTrade.price,
-                    exitPrice: exitPrice,
-                    profit: profit,
-                    targets: (wouldHitTakeProfit, wouldHitStopLoss),
-                    confidence: activeTrade.signal.confidence,
-                    patternInformation: activeTrade.patternInformation
-                )
-                stats.add(result)
-                
-                await request.watcherState.updateActiveTrade(nil)
+                if request.isSimulation {
+                    let profit = isLongTrade
+                        ? exitPrice - activeTrade.price
+                        : activeTrade.price - exitPrice
+                    
+                    let result = TradeResult(
+                        entryTime: activeTrade.entryBar.timeOpen,
+                        exitTime: recentBar.timeOpen,
+                        isLong: isLongTrade,
+                        entryPrice: activeTrade.price,
+                        exitPrice: exitPrice,
+                        profit: profit,
+                        targets: (wouldHitTakeProfit, wouldHitStopLoss),
+                        confidence: activeTrade.signal.confidence,
+                        patternInformation: activeTrade.patternInformation
+                    )
+                    stats.add(result)
+                    
+                    activeTrades[activeTrade.id] = nil
+                }
             }
         }
     }

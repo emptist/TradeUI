@@ -49,7 +49,6 @@ extension InteractiveBrokers {
         let group = UUID().uuidString
         let opposite = action == .buy ? IBAction.sell : .buy
         var orders: [IBOrder] = []
-        
         var limitOrder = IBOrder.limit(
             price,
             action: action,
@@ -172,8 +171,9 @@ extension InteractiveBrokers {
         AsyncStream { continuation in
             var tasks: [Task<Void, Error>] = []
 
-            for order in orders {
+            for (i, order) in orders.enumerated() {
                 tasks.append(Task { [order] in
+                    if i > 0 { try await Task.sleep(nanoseconds: 50_000_000) }
                     let stream = try await streamOrder(order)
                     for try await event in stream {
                         continuation.yield(event)
