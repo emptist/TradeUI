@@ -13,7 +13,7 @@ extension InteractiveBrokers {
             throw TradeError.requestError("Missing account identifier")
         }
         var order = IBOrder.limit(price, action: action, quantity: quantity, contract: contract, account: account)
-        order.orderID = nextOrderID
+        order.orderID = client.nextRequestID
         return try await streamOrder(order)
     }
     
@@ -29,7 +29,7 @@ extension InteractiveBrokers {
             throw TradeError.requestError("Missing account identifier")
         }
         var order = IBOrder.trailingStop(stop: trailStopPrice, limit: price, action: action, quantity: quantity, contract: contract, account: account)
-        order.orderID = nextOrderID
+        order.orderID = client.nextRequestID
         order.parentId = parentOrderId
         return try await streamOrder(order)
     }
@@ -50,7 +50,7 @@ extension InteractiveBrokers {
         var orders: [IBOrder] = []
         
         var limitOrder = IBOrder.limit(price, action: action, quantity: quantity, contract: contract, account: account)
-        limitOrder.orderID = nextOrderID
+        limitOrder.orderID = client.nextRequestID
         limitOrder.transmit = false
         orders.append(limitOrder)
         
@@ -63,7 +63,7 @@ extension InteractiveBrokers {
                 contract: contract,
                 account: account
             )
-            stopOrder.orderID = nextOrderID
+            stopOrder.orderID = client.nextRequestID
             stopOrder.parentId = limitOrder.orderID
             stopOrder.ocaGroup = group
             stopOrder.transmit = true
@@ -95,7 +95,7 @@ extension InteractiveBrokers {
             contract: contract,
             account: account
         )
-        limitOrder.orderID = nextOrderID
+        limitOrder.orderID = client.nextRequestID
         limitOrder.transmit = false
         limitOrder.tif = .goodTilDate
         limitOrder.goodTillDate = Date().addingTimeInterval(60)
@@ -110,7 +110,7 @@ extension InteractiveBrokers {
                 account: account
             )
             
-            stopOrder.orderID = nextOrderID
+            stopOrder.orderID = client.nextRequestID
             stopOrder.parentId = limitOrder.orderID
             stopOrder.ocaGroup = group
             stopOrder.ocaType = .cancelBlock
@@ -126,21 +126,19 @@ extension InteractiveBrokers {
                 contract: contract,
                 account: account
             )
-            tpOrder.orderID = nextOrderID
+            tpOrder.orderID = client.nextRequestID
             tpOrder.parentId = limitOrder.orderID
             tpOrder.ocaGroup = group
             tpOrder.ocaType = .cancelBlock
             tpOrder.transmit = true
             orders.append(tpOrder)
         }
-        
         return streamOrders(orders)
     }
     
     private func streamOrder(_ order: IBOrder) async throws -> AsyncStream<any OrderEvent> {
-        let requestID = client.nextRequestID
+        let requestID = order.orderID
         try await client.placeOrder(requestID, order: order)
-        
         return AsyncStream { continuation in
             Task {
                 for await event in await client.eventFeed {
@@ -167,16 +165,13 @@ extension InteractiveBrokers {
 
             for (i, order) in orders.enumerated() {
                 tasks.append(Task { [order] in
-                    if i > 0 { try? await Task.sleep(for: .milliseconds(50)) }
+                    if i > 0 { try? await Task.sleep(for: .milliseconds(i * 100)) }
                     let stream = try await streamOrder(order)
                     for try await event in stream {
+                        print(Date().timeIntervalSince1970, i, event)
                         continuation.yield(event)
                     }
                 })
-            }
-
-            continuation.onTermination = { [tasks] _ in
-                tasks.forEach { $0.cancel() }
             }
 
             Task {

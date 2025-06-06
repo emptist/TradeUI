@@ -36,25 +36,6 @@ public class InteractiveBrokers: @unchecked Sendable, Market {
         queue.sync { _accounts.first?.value }
     }
     
-    /// Return next valid request identifier you should use to make request or subscription
-    private var _nextOrderId: Int = 0
-    public var nextOrderID: Int {
-        let now = Date()
-        let calendar = Calendar(identifier: .gregorian)
-        let utcComponents = calendar.dateComponents(in: .gmt, from: now)
-        
-        guard let day = utcComponents.day,
-              let hour = utcComponents.hour,
-              let minute = utcComponents.minute,
-              let second = utcComponents.second else { return _nextOrderId }
-        
-        // Construct unique order ID: day + hour + minute + second + _nextOrderId
-        let orderID = Int("\(String(format: "%02d", day))\(String(format: "%02d", hour))\(String(format: "%02d", minute))\(String(format: "%02d", second))\(String(format: "%d", _nextOrderId))") ?? _nextOrderId
-        
-        _nextOrderId += 1
-        return orderID
-    }
-    
     private var _unsubscribeMarketData: Set<Asset> = []
     private var _unsubscribeQuote: Set<IBContract> = []
     private let unsubscribeQueue = DispatchQueue(label: "IB.unsubscribe.sync", attributes: .concurrent)

@@ -226,10 +226,14 @@ private extension TradeAggregator {
         guard isTradeEntryEnabled else { return }
 
         do {
-            try await placeOrder(trade: finalTrade, isLong: finalTrade.isLong)
+            try await placeOrder(trade: finalTrade, isLong: finalTrade.isLong, request: request)
         } catch {
             print("🔴 Order failed: \(error)")
         }
+    }
+    
+    func roundedPrice(_ price: Double, tick: Double = 0.25) -> Double {
+        (price / tick).rounded() * tick
     }
 
     func determineOrderPrice(signal: Signal, quote: Quote, fallback: Double) -> Double {
@@ -237,14 +241,21 @@ private extension TradeAggregator {
         else { return quote.bidPrice ?? fallback }
     }
 
-    func placeOrder(trade: Trade, isLong: Bool) async throws {
+    func placeOrder(trade: Trade, isLong: Bool, request: Request) async throws {
         guard let order = marketOrder else { return }
         let action: OrderAction = isLong ? .buy : .sell
+        
+        let details = await request.watcherState.getTradingHours()?.first
+        let tickSize = details?.tickSize ?? 0.25
+        let roundedEntry = roundedPrice(trade.price, tick: tickSize)
+        let roundedTP = roundedPrice(trade.targets.takeProfit ?? trade.price, tick: tickSize)
+        let roundedSL = roundedPrice(trade.targets.stopLoss ?? trade.price, tick: tickSize)
+        
         try await order.makeLimitWithStopOrder(
             contract: contract,
             action: action,
-            price: trade.price,
-            targets: trade.targets,
+            price: roundedEntry,
+            targets: (roundedTP, roundedSL),
             quantity: trade.units
         )
     }

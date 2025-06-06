@@ -126,18 +126,15 @@ public extension InteractiveBrokers {
     
     func updatePositions(_ positionPNL: IBPositionPNL) {
         guard let accountName = positionPNL.account else {
-            print("⚠️ Account not found for position update")
             return
         }
         
         guard let contractID = positionPNL.contractID else {
-            print("⚠️ Missing contract ID for position update")
             return
         }
 
         // Find the existing position
         guard let index = accounts[accountName]?.positions.firstIndex(where: { $0.contractID == contractID }) else {
-            print("⚠️ Position not found for contract ID: \(contractID)")
             return
         }
 
