@@ -174,15 +174,20 @@ public class InteractiveBrokers: @unchecked Sendable, Market {
     
     public func tradingHour(_ product: any Contract) async throws -> [TradingHour] {
         let details = try await contractDetails(product)
+        
+        // minimum price increment
+        let tickSize = details.minimumTick
+        // $ per tick (customize per contract)
+        let tickValue = details.multiplier.flatMap(Double.init) ?? 1.0
+        
         return details.liquidHours?.map {
-            TradingHour(open: $0.open, close: $0.close, status: $0.status.rawValue)
-        } ?? []
-    }
-    
-    public func unitFee(_ product: any Contract) async throws -> [TradingHour] {
-        let details = try await contractDetails(product)
-        return details.liquidHours?.map {
-            TradingHour(open: $0.open, close: $0.close, status: $0.status.rawValue)
+            TradingHour(
+                open: $0.open,
+                close: $0.close,
+                status: $0.status.rawValue,
+                tickValue: tickValue,
+                tickSize: tickSize
+            )
         } ?? []
     }
     

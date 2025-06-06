@@ -4,6 +4,9 @@ public struct TradingHour: Sendable, Equatable {
     public var open: Date
     public var close: Date
     public var status: String
+    
+    public let tickValue: Double
+    public let tickSize: Double
 }
 
 public extension [TradingHour] {

@@ -37,8 +37,10 @@ public struct DoNothingStrategy: Strategy {
 
     public func shouldEnterWitUnitCount(
         signal: Signal,
-        entryBar: any TradingStrategy.Klines,
+        entryBar: Klines,
         equity: Double,
+        tickValue: Double,
+        tickSize: Double,
         feePerUnit cost: Double,
         nextAnnoucment annoucment: Annoucment?
     ) -> Int {

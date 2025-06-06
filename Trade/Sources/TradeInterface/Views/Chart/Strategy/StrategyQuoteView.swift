@@ -5,7 +5,6 @@ import Brokerage
 import TradingStrategy
 
 public struct StrategyQuoteView: View {
-    @CodableAppStorage("watched.assets") private var watchedAssets: Set<Asset> = []
     @Environment(TradeManager.self) private var trades
     @EnvironmentObject var strategyRegistry: StrategyRegistry
     #if os(macOS)
@@ -138,11 +137,7 @@ public struct StrategyQuoteView: View {
             strategyId: strategyId
         )
         await MainActor.run {
-            var assetsToUpdate = watchedAssets
-            if let removed = assetsToUpdate.remove(asset) {
-                print("🟤 Removed watched asset:", removed, watchedAssets.count, assetsToUpdate.count)
-            }
-            watchedAssets = assetsToUpdate
+            trades.removeWatcher(asset.id)
         }
         do {
             try await trades.cancelMarketData(asset)

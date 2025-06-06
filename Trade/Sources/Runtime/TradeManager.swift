@@ -32,6 +32,12 @@ import OrderedCollections
         }
     }
     
+    public func removeWatcher(_ id: String) {
+        lock.withLock {
+            watchers[id] = nil
+        }
+    }
+    
     public func watchersGroups() -> OrderedDictionary<TradeAggregator, [Watcher]> {
         return lock.withLock {
             var groupedWatchers: OrderedDictionary<TradeAggregator, [Watcher]> = OrderedDictionary(grouping: watchers.values) { $0.tradeAggregator }
@@ -215,7 +221,6 @@ import OrderedCollections
         }
         registry.register(strategyType: DoNothingStrategy.self)
         registry.register(strategyType: SurpriseBarStrategy.self)
-        registry.register(strategyType: ORB30Strategy.self)
         registry.register(strategyType: FollowMovingAverageStrategy.self)
     }
     

@@ -38,6 +38,19 @@ public struct WatcherView: View {
                         interval: interval
                     )
                     .id(watcher.id)
+                    .overlay(alignment: .bottomLeading) {
+                        HStack {
+                            Button("Pull") {
+                                watcher.pullNext = true
+                            }
+                            
+                            Button("Order") {
+                                Task {
+                                    await watcher.tradeAggregator.placeManualTrade(from: watcher, isLong: true)
+                                }
+                            }
+                        }.padding()
+                    }
                 }
             }
             .id(watcher.id + "_view")

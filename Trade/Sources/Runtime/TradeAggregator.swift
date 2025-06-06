@@ -1,29 +1,30 @@
+// MARK: - TradeAggregator.swift
+
 import Foundation
 import Brokerage
 import TradingStrategy
 
-
-
 public final class TradeAggregator: Hashable {
-    public var isTradeEntryEnabled: Bool = true
-    public var isTradeExitEnabled: Bool = true
-    public var isTradeEntryNotificationEnabled: Bool = true
-    public var isTradeExitNotificationEnabled: Bool = true
-    public var minConfirmations: Int = 1
-    
+    public var isTradeEntryEnabled = true
+    public var isTradeExitEnabled = true
+    public var isTradeEntryNotificationEnabled = true
+    public var isTradeExitNotificationEnabled = true
+    public var minConfirmations = 1
+
     public let id = UUID()
     public let contract: any Contract
+
     private var marketOrder: MarketOrder?
     private var tradeSignals: Set<Request> = []
-    private var activeTrades: [UUID: Trade] = [:]
+    private var activeSimulationTrades: [UUID: Trade] = [:]
     private let stats = TradeStats()
     private let tradeQueue = DispatchQueue(label: "TradeAggregatorQueue", attributes: .concurrent)
-    
+
     private var getNextTradingAlertsAction: (() -> Annoucment?)?
     private var tradeEntryNotificationAction: ((_ trade: Trade, _ recentBar: Klines) -> Void)?
     private var tradeExitNotificationAction: ((_ trade: Trade, _ recentBar: Klines) -> Void)?
     private var patternInformationChangeAction: ((_ patternInformation: [String: Double]) -> Void)?
-    
+
     public init(
         contract: any Contract,
         marketOrder: MarketOrder? = nil,
@@ -32,273 +33,293 @@ public final class TradeAggregator: Hashable {
         tradeExitNotificationAction: ((_ trade: Trade, _ recentBar: Klines) -> Void)? = nil,
         patternInformationChangeAction: ((_ patternInformation: [String: Double]) -> Void)? = nil
     ) {
-        self.marketOrder = marketOrder
         self.contract = contract
+        self.marketOrder = marketOrder
         self.getNextTradingAlertsAction = getNextTradingAlertsAction
         self.tradeEntryNotificationAction = tradeEntryNotificationAction
         self.tradeExitNotificationAction = tradeExitNotificationAction
         self.patternInformationChangeAction = patternInformationChangeAction
     }
-    
+
     deinit {
         getNextTradingAlertsAction = nil
         tradeEntryNotificationAction = nil
         tradeExitNotificationAction = nil
     }
-    
+
     public func registerTradeSignal(_ request: Request) async {
         let strategy = await request.watcherState.getStrategy()
         patternInformationChangeAction?(strategy.patternInformation)
-        if let _ = strategy.patternIdentified {
-            let contractLabel = contract.label
-            
-            let alignedRequests: [(Request, Signal?)] =
-            await tradeQueue.sync(flags: .barrier) {
-                self.tradeSignals.insert(request)
-                return Array(self.tradeSignals)
-            }.asyncMap { req async in
-                let sig = await req.watcherState.getStrategy().patternIdentified
-                return (req, sig)
-            }
-            
-            // Count votes per signal
-            let groupedBySignal = Dictionary(grouping: alignedRequests, by: { $0.1 })
-            let (majoritySignal, matchingRequests) = groupedBySignal
-                .filter { $0.key != nil }
-                .max(by: { $0.value.count < $1.value.count }) ?? (nil, [])
-            
-            if let confirmedSignal = majoritySignal, matchingRequests.count >= minConfirmations {
-                let avgConfidence = matchingRequests
-                    .compactMap { $0.1?.confidence }
-                    .reduce(0, +) / Float(matchingRequests.count)
-                
-                guard avgConfidence > 0.0 else {
-                    print("⚠️ Insufficient confidence (\(avgConfidence)) for signal \(confirmedSignal)")
-                    return
-                }
-                
-                let matchingRequest = tradeQueue.sync(flags: .barrier) { [weak self] in
-                    let match = self?.tradeSignals.first(where: { $0.contract.label == contractLabel })
-                    if match != nil {
-                        self?.tradeSignals.removeAll()
-                    }
-                    return match
-                }
-                guard let matchingRequest else {
-                    print("🔴 Failure to find matching request")
-                    return
-                }
-                await enterTradeIfStrategyIsValidated(matchingRequest, signal: confirmedSignal)
-                tradeQueue.sync(flags: .barrier) { [weak self] in
-                    self?.tradeSignals = []
-                }
-            } else {
-                print("⏳ Waiting for more confirmations for \(contract): \(tradeSignals.count)/\(minConfirmations)")
-            }
-        } else {
-            tradeQueue.sync(flags: .barrier) { [weak self] in
-                _ = self?.tradeSignals.remove(request)
-            }
+
+        guard let _ = strategy.patternIdentified else {
+            tradeQueue.sync(flags: .barrier) { _ = tradeSignals.remove(request) }
+            return
         }
-        if request.isSimulation {
-            await manageActiveTrade(request)
+         
+        guard
+            let timeRemaining = strategy.candles.last?.timeRemaining,
+            (timeRemaining < 5.0 && timeRemaining > 0) || request.isSimulation
+        else {
+            tradeQueue.sync(flags: .barrier) { _ = tradeSignals.remove(request) }
+            return
         }
+
+        let alignedRequests = await alignedTradeRequests(request)
+        let (confirmedSignal, matchingRequests) = majorityVote(alignedRequests)
+
+        guard
+            let signal = confirmedSignal,
+            matchingRequests.count >= minConfirmations
+        else {
+            print("⏳ Waiting for confirmations: \(tradeSignals.count)/\(minConfirmations)")
+            return
+        }
+
+        let avgConfidence = matchingRequests.compactMap { $0.1?.confidence }.reduce(0, +) / Float(matchingRequests.count)
+        guard avgConfidence > 0 else {
+            print("⚠️ Low confidence: \(avgConfidence)")
+            return
+        }
+
+        let matchingRequest = tradeQueue.sync(flags: .barrier) {
+            let match = tradeSignals.first { $0.contract.label == contract.label }
+            if match != nil { tradeSignals.removeAll() }
+            return match
+        }
+
+        guard let requestToTrade = matchingRequest else {
+            print("🔴 No matching request")
+            return
+        }
+
+        await enterTradeIfStrategyIsValidated(requestToTrade, signal: signal)
+
+        tradeQueue.sync(flags: .barrier) {
+            tradeSignals = []
+        }
+
+        await manageActiveTrade(request)
     }
     
-    private func enterTradeIfStrategyIsValidated(_ request: Request, signal: Signal) async {
+    public func placeManualTrade(from watcher: Watcher, isLong: Bool) async {
+        let strategy = await watcher.watcherState.getStrategy()
+        guard let entryBar = strategy.candles.last else {
+            print("❌ No bar available for manual trade.")
+            return
+        }
+
+        let signal: Signal = isLong ? .buy(confidence: 1) : .sell(confidence: 1)
+        let targets = strategy.exitTargets(for: signal, entryBar: entryBar)
+
+        let trade = Trade(
+            entryBar: entryBar,
+            signal: signal,
+            price: entryBar.priceClose,
+            targets: targets,
+            units: 1.0,
+            patternInformation: strategy.patternInformation
+        )
+        await evaluateMarketCoonditions(
+            trade: trade,
+            request: Request(
+                isSimulation: false,
+                watcherState: watcher.watcherState,
+                contract: contract,
+                interval: entryBar.interval
+            )
+        )
+    }
+}
+
+// MARK: - Entry Logic
+
+private extension TradeAggregator {
+    func alignedTradeRequests(_ request: Request) async -> [(Request, Signal?)] {
+        await tradeQueue.sync(flags: .barrier) {
+            tradeSignals.insert(request)
+            return Array(tradeSignals)
+        }.asyncMap { req async in
+            let sig = await req.watcherState.getStrategy().patternIdentified
+            return (req, sig)
+        }
+    }
+
+    func majorityVote(_ requests: [(Request, Signal?)]) -> (Signal?, [(Request, Signal?)]) {
+        let grouped = Dictionary(grouping: requests, by: { $0.1 })
+        return grouped.filter { $0.key != nil }
+            .max { $0.value.count < $1.value.count } ?? (nil, [])
+    }
+
+    func enterTradeIfStrategyIsValidated(_ request: Request, signal: Signal) async {
         guard !Task.isCancelled else { return }
+
         let strategy = await request.watcherState.getStrategy()
-        guard let _ = strategy.patternIdentified, let entryBar = strategy.candles.last else { return }
-        
+        guard let entryBar = strategy.candles.last else { return }
+        let details = await request.watcherState.getTradingHours()?.first
+        let targets = strategy.exitTargets(for: signal, entryBar: entryBar)
+        let units = strategy.shouldEnterWitUnitCount(
+            signal: signal,
+            entryBar: entryBar,
+            equity: request.isSimulation ? 1_000_000 : (marketOrder?.account?.buyingPower ?? 0),
+            tickValue: details?.tickValue ?? 1,
+            tickSize: details?.tickSize ?? 1,
+            feePerUnit: 10,
+            nextAnnoucment: request.isSimulation ? nil : getNextTradingAlertsAction?()
+        )
+
+        guard units > 0 else { return }
+
+        let trade = Trade(
+            entryBar: entryBar,
+            signal: signal,
+            price: entryBar.priceClose,
+            targets: targets,
+            units: Double(units),
+            patternInformation: strategy.patternInformation
+        )
+
         if request.isSimulation {
-            let units = strategy.shouldEnterWitUnitCount(
-                signal: signal,
-                entryBar: entryBar,
-                equity: 1_000_000,
-                feePerUnit: 50,
-                nextAnnoucment: nil
-            )
-            let targets = strategy.exitTargets(for: signal, entryBar: entryBar)
-            let trade = Trade(
-                entryBar: entryBar,
-                signal: signal,
-                price: entryBar.priceClose,
-                targets: targets,
-                units: Double(units),
-                patternInformation: strategy.patternInformation
-            )
-            activeTrades[trade.id] = trade
-        } else if let account = marketOrder?.account {
-            let nextEvent = getNextTradingAlertsAction?()
-            let units = strategy.shouldEnterWitUnitCount(
-                signal: signal,
-                entryBar: entryBar,
-                equity: account.buyingPower,
-                feePerUnit: 50,
-                nextAnnoucment: nextEvent
-            )
-            guard units > 0 else { return }
-            let targets = strategy.exitTargets(for: signal, entryBar: entryBar)
-            print("✅ enterTradeIfStrategyIsValidated signal: \(signal)")
-            print("✅ enterTradeIfStrategyIsValidated symbol: \(request.symbol): interval: \(request.interval)")
-            print("✅ enterTradeIfStrategyIsValidated units: ", units)
-            print("✅ enterTradeIfStrategyIsValidated targets: ", targets)
-            
-            await evaluateMarketCoonditions(
-                trade:
-                    Trade(
-                        entryBar: entryBar,
-                        signal: signal,
-                        price: entryBar.priceClose,
-                        targets: targets,
-                        units: Double(units),
-                        patternInformation: strategy.patternInformation
-                    ),
-                request: request
-            )
+            activeSimulationTrades[trade.id] = trade
+        } else {
+            await evaluateMarketCoonditions(trade: trade, request: request)
         }
     }
-    
-    private func evaluateMarketCoonditions(trade: Trade, request: Request) async {
+}
+
+// MARK: - Position Management
+
+private extension TradeAggregator {
+    func evaluateMarketCoonditions(trade: Trade, request: Request) async {
         let marketOpen = await request.watcherState.getTradingHours()?.isMarketOpen()
-        print("✅ evaluateMarketCoonditions: ", marketOpen as Any)
+        
         guard
             let marketOpen,
             marketOpen.isOpen,
             let timeUntilClose = marketOpen.timeUntilChange,
             timeUntilClose > (1_800 * 6)
-        else { return }
-        
-        guard let quote = await request.watcherState.getQuote() else {
-            print("⚠️ No quote available, cannot enter trade.")
+        else {
+            print("⚠️ Market closed.")
             return
         }
-
-        let orderPrice: Double
-        if trade.signal.isLong, let ask = quote.askPrice {
-            orderPrice = ask
-        } else if !trade.signal.isLong, let bid = quote.bidPrice {
-            orderPrice = bid
-        } else {
-            print("⚠️ No bid/ask available, fallback to entry bar close.")
-            orderPrice = trade.price
+        
+        guard
+            let quote = await request.watcherState.getQuote()
+        else {
+            print("⚠️ Market quote missing.")
+            return
         }
-
-        let tradeWithQuotePrice = Trade(
+        let price = determineOrderPrice(signal: trade.signal, quote: quote, fallback: trade.price)
+        let finalTrade = Trade(
             id: trade.id,
             entryBar: trade.entryBar,
             signal: trade.signal,
-            price: orderPrice,
+            price: price,
             targets: trade.targets,
             units: trade.units,
             patternInformation: trade.patternInformation
         )
 
-        activeTrades[trade.id] = tradeWithQuotePrice
-
         if isTradeEntryNotificationEnabled {
-            tradeEntryNotificationAction?(tradeWithQuotePrice, tradeWithQuotePrice.entryBar)
+            tradeEntryNotificationAction?(finalTrade, finalTrade.entryBar)
         }
-        
+
         guard isTradeEntryEnabled else { return }
 
         do {
-            try await placeOrder(trade: tradeWithQuotePrice, isLong: trade.isLong)
+            try await placeOrder(trade: finalTrade, isLong: finalTrade.isLong)
         } catch {
-            print("🔴 Failed placing initial order: \(error)")
+            print("🔴 Order failed: \(error)")
         }
     }
-    
-    private func placeOrder(trade: Trade, isLong: Bool) async throws {
-        guard let marketOrder else { return }
 
-        let side: OrderAction = isLong ? .buy : .sell
-        try await marketOrder.makeLimitWithStopOrder(
+    func determineOrderPrice(signal: Signal, quote: Quote, fallback: Double) -> Double {
+        if signal.isLong { return quote.askPrice ?? fallback }
+        else { return quote.bidPrice ?? fallback }
+    }
+
+    func placeOrder(trade: Trade, isLong: Bool) async throws {
+        guard let order = marketOrder else { return }
+        let action: OrderAction = isLong ? .buy : .sell
+        try await order.makeLimitWithStopOrder(
             contract: contract,
-            action: side,
+            action: action,
             price: trade.price,
             targets: trade.targets,
             quantity: trade.units
         )
     }
-    
-    private func manageActiveTrade(_ request: Request) async {
+
+    func manageActiveTrade(_ request: Request) async {
         guard !Task.isCancelled else { return }
         let strategy = await request.watcherState.getStrategy()
-        
         guard let recentBar = strategy.candles.last else { return }
-        
-        let trades = Array(activeTrades.values)
-        for activeTrade in trades {
-            let isLongTrade = activeTrade.isLong
-            
-            let wouldHitStopLoss: Bool = {
-                guard let stopLoss = activeTrade.targets.stopLoss else { return false }
-                return isLongTrade
-                    ? recentBar.priceLow <= stopLoss
-                    : recentBar.priceHigh >= stopLoss
-            }()
-            
-            let wouldHitTakeProfit: Bool = {
-                guard let takeProfit = activeTrade.targets.takeProfit else { return false }
-                return isLongTrade
-                    ? recentBar.priceHigh >= takeProfit
-                    : recentBar.priceLow <= takeProfit
-            }()
 
-            if (wouldHitStopLoss || wouldHitTakeProfit) {
-                let quote = await request.watcherState.getQuote()
-                let exitPrice = quote?.lastPrice ?? recentBar.priceClose
-
-                if request.isSimulation {
-                    let profit = isLongTrade
-                        ? exitPrice - activeTrade.price
-                        : activeTrade.price - exitPrice
-                    
-                    let result = TradeResult(
-                        entryTime: activeTrade.entryBar.timeOpen,
-                        exitTime: recentBar.timeOpen,
-                        isLong: isLongTrade,
-                        entryPrice: activeTrade.price,
-                        exitPrice: exitPrice,
-                        profit: profit,
-                        targets: (wouldHitTakeProfit, wouldHitStopLoss),
-                        confidence: activeTrade.signal.confidence,
-                        patternInformation: activeTrade.patternInformation
-                    )
-                    stats.add(result)
-                    
-                    activeTrades[activeTrade.id] = nil
-                }
-            }
+        if request.isSimulation {
+            await manageSimulation(request, recentBar: recentBar)
+        } else {
+            // TODO: Add dynamic should exit handling
         }
     }
     
-    public func hash(into hasher: inout Hasher) {
-        hasher.combine(contract.label)
-        hasher.combine(id)
+    private func manageSimulation(_ request: Request, recentBar: any Klines) async {
+        for trade in activeSimulationTrades.values {
+            let isLong = trade.isLong
+
+            let hitStop = isLong
+                ? recentBar.priceLow <= (trade.targets.stopLoss ?? .infinity)
+                : recentBar.priceHigh >= (trade.targets.stopLoss ?? -.infinity)
+
+            let hitProfit = isLong
+                ? recentBar.priceHigh >= (trade.targets.takeProfit ?? .infinity)
+                : recentBar.priceLow <= (trade.targets.takeProfit ?? -.infinity)
+
+            if hitStop || hitProfit {
+                let price = (await request.watcherState.getQuote())?.lastPrice ?? recentBar.priceClose
+                let result = TradeResult(
+                    entryTime: trade.entryBar.timeOpen,
+                    exitTime: recentBar.timeOpen,
+                    isLong: isLong,
+                    entryPrice: trade.price,
+                    exitPrice: price,
+                    profit: isLong ? price - trade.price : trade.price - price,
+                    targets: (hitProfit, hitStop),
+                    confidence: trade.signal.confidence,
+                    patternInformation: trade.patternInformation
+                )
+                stats.add(result)
+                
+                activeSimulationTrades[trade.id] = nil
+            }
+        }
     }
-    
-    public static func == (lhs: TradeAggregator, rhs: TradeAggregator) -> Bool {
-        lhs.id == rhs.id
-    }
-    
-    // MARK: Types
-    
-    public struct Request: Hashable {
+}
+
+// MARK: - Helpers
+
+public extension TradeAggregator {
+    struct Request: Hashable {
         let isSimulation: Bool
         let watcherState: Watcher.WatcherStateActor
         let contract: any Contract
         let interval: TimeInterval
-        
+
         public func hash(into hasher: inout Hasher) {
             hasher.combine(contract.label)
             hasher.combine(interval)
         }
-        
+
         public static func == (lhs: Request, rhs: Request) -> Bool {
-            return lhs.contract.label == rhs.contract.label && lhs.interval == rhs.interval
+            lhs.contract.label == rhs.contract.label && lhs.interval == rhs.interval
         }
+    }
+
+    func hash(into hasher: inout Hasher) {
+        hasher.combine(contract.label)
+        hasher.combine(id)
+    }
+
+    static func == (lhs: TradeAggregator, rhs: TradeAggregator) -> Bool {
+        lhs.id == rhs.id
     }
 }
 

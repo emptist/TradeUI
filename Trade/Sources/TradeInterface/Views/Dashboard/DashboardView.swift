@@ -5,7 +5,6 @@ import Brokerage
 import Runtime
 
 struct DashboardView: View {
-    @CodableAppStorage("watched.assets") private var watchedAssets: Set<Asset> = []
     @AppStorage("selected.strategy.id") private var selectedStrategyId: String = DoNothingStrategy.id
     @AppStorage("trade.alert.sound") private var alertSoundEnabled: Bool = true
     @AppStorage("trade.alert.message") private var alertMessageEnabled: Bool = true
@@ -137,9 +136,10 @@ struct DashboardView: View {
         .frame(maxHeight: .infinity, alignment: .topLeading)
         .task {
             try? await Task.sleep(for: .milliseconds(200))
+            let instruments = [Instrument.NQ, Instrument.ES, Instrument.RTY]
             await MainActor.run {
-                watchedAssets.forEach {
-                    self.marketData(contract: $0.instrument, interval: $0.interval, strategyId: $0.strategyId)
+                for asset in instruments {
+                    self.marketData(contract: asset, interval: 15 * 60, strategyId: FollowMovingAverageStrategy.id)
                 }
             }
         }
@@ -153,10 +153,9 @@ struct DashboardView: View {
                     Spacer()
                     Button(
                         action: {
-                            trades.removeAllWatchers()
                             Task {
                                 await MainActor.run {
-                                    watchedAssets.removeAll()
+                                    trades.removeAllWatchers()
                                 }
                             }
                         },
@@ -294,17 +293,6 @@ struct DashboardView: View {
     private func marketData(contract: any Contract, interval: TimeInterval, strategyId: String) {
         do {
             let strategyType: Strategy.Type = strategyRegistry.strategyType(forId: strategyId) ?? DoNothingStrategy.self
-            let asset = Asset(
-                instrument: Instrument(
-                    type: contract.type,
-                    symbol: contract.symbol,
-                    exchangeId: contract.exchangeId,
-                    currency: contract.currency
-                ),
-                interval: interval,
-                strategyId: strategyId
-            )
-            watchedAssets.insert(asset)
             try trades.marketData(
                 contract: contract,
                 interval: interval,
