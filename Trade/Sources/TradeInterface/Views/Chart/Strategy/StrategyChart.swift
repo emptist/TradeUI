@@ -1,14 +1,17 @@
 import SwiftUI
 import TradingStrategy
+import Runtime
 
 public struct StrategyChart: View {
     let strategy: any Strategy
     let interval: TimeInterval
+    let trades: [Trade]
     let lastUpdated = Date()
     
-    public init(strategy: any Strategy, interval: TimeInterval) {
+    public init(strategy: any Strategy, interval: TimeInterval, trades: [Trade]) {
         self.strategy = strategy
         self.interval = interval
+        self.trades = trades
     }
     
     public var body: some View {
@@ -16,6 +19,8 @@ public struct StrategyChart: View {
             ForEach(0 ..< strategy.charts.count, id: \.self) { index in
                 chart(
                     candles: strategy.charts[safe: index] ?? [],
+                    trades: trades,
+                    patterns: strategy.patterns,
                     chartScale: strategy.resolution[safe: index] ?? Scale(data: []),
                     phases: strategy.distribution[safe: index] ?? [],
                     indicators: strategy.indicators[safe: index] ?? [:],
@@ -28,6 +33,8 @@ public struct StrategyChart: View {
     @ViewBuilder
     func chart(
         candles: [Klines],
+        trades: [Trade],
+        patterns: [(index: Int, pattern: PricePattern)],
         chartScale: Scale,
         phases: [Phase],
         indicators: [String: [Double]],
@@ -38,6 +45,8 @@ public struct StrategyChart: View {
                 interval: candles.first?.interval ?? interval,
                 lastUpdate: lastUpdated,
                 data: candles,
+                trades: trades,
+                patterns: patterns,
                 scale: chartScale
             )
             .chartBackground { context, scale, frame in
@@ -93,7 +102,7 @@ public struct StrategyChart: View {
                 context.stroke(path, with: .color(indicatorColor), lineWidth: 1)
                 
                 if let lastPoint = points.last {
-                    let labelRect = CGRect(x: frame.maxX - 50, y: lastPoint.y - 20, width: 50, height: 20)
+                    let labelRect = CGRect(x: frame.minX + 50, y: lastPoint.y - 20, width: 50, height: 20)
                     context.draw(
                         Text(name)
                             .font(.caption)

@@ -1,5 +1,6 @@
 import SwiftUI
 import TradingStrategy
+import Runtime
 
 public struct ChartView: View {
     @State private var scale = Scale()
@@ -10,6 +11,8 @@ public struct ChartView: View {
     private let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
     
     public let data: [Klines]
+    public let trades: [Trade]
+    public let patterns: [(index: Int, pattern: PricePattern)]
     public let interval: TimeInterval
     public let lastUpdate: Date
     public var scaleOriginal: Scale
@@ -41,11 +44,15 @@ public struct ChartView: View {
         interval: TimeInterval,
         lastUpdate: Date,
         data: [Klines],
+        trades: [Trade],
+        patterns: [(index: Int, pattern: PricePattern)],
         scale: Scale,
         overlay: @escaping (_ context: inout GraphicsContext, _ scale: Scale, _ frame: CGRect) -> Void = { _, _, _ in },
         background: @escaping (_ context: inout GraphicsContext, _ scale: Scale, _ frame: CGRect) -> Void = { _, _, _ in }
     ) {
         self.data = data
+        self.trades = trades
+        self.patterns = patterns
         self.interval = interval
         self.lastUpdate = lastUpdate
         self.scaleOriginal = scale
@@ -57,6 +64,8 @@ public struct ChartView: View {
         ChartCanvasView(
             scale: scale,
             data: data,
+            trades: trades,
+            patterns: patterns,
             overlay: canvasOverlay,
             background: canvasBackground
         )
@@ -145,6 +154,8 @@ public struct ChartView: View {
             interval: interval,
             lastUpdate: lastUpdate,
             data: data,
+            trades: trades,
+            patterns: patterns,
             scale: scaleOriginal,
             overlay: canvasOverlay,
             background: canvasBackground
@@ -156,6 +167,8 @@ public struct ChartView: View {
             interval: interval,
             lastUpdate: lastUpdate,
             data: data,
+            trades: trades,
+            patterns: patterns,
             scale: scaleOriginal,
             overlay: canvasOverlay,
             background: canvasBackground
@@ -165,6 +178,6 @@ public struct ChartView: View {
 
 struct ChartView_Previews: PreviewProvider {
     static var previews: some View {
-        ChartView(interval: 60, lastUpdate: Date(), data: [], scale: Scale())
+        ChartView(interval: 60, lastUpdate: Date(), data: [], trades: [], patterns: [], scale: Scale())
     }
 }

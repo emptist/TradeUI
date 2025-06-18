@@ -3,9 +3,9 @@ import TradingStrategy
 import Foundation
 
 struct AlertHandler: TradeAlertHandling, Sendable {
-    func patternInformationChange(_ patternInformation: [String: Bool]) {
+    func patternInformationChange(_ patternInformation: [String : Double]) {
         let patterns = patternInformation.map { (pattern, active) in
-            "\(active ? "✅" : "❌") \(pattern): \(active ? "Active" : "Inactive")"
+            "\(active > 0 ? "✅" : "❌") \(pattern): \(active > 0 ? "Active" : "Inactive")"
         }.joined(separator: "\n│ ")
         
         print("""
@@ -38,7 +38,7 @@ struct AlertHandler: TradeAlertHandling, Sendable {
             ├──────────────────────────────┤
             │ Entry Time: \(entryTime)
             │ Entry Price: $\(String(format: "%.2f", trade.price))
-            │ Trail Stop Price: $\(String(format: "%.2f", trade.stopPrice))
+            │ Trail Stop Price: $\(String(format: "%.2f", trade.targets.stopLoss ?? 0))
             │ Units: \(String(format: "%.2f", trade.units))
             │ Direction: \(trade.isLong ? "Long" : "Short")
             └──────────────────────────────┘
@@ -53,13 +53,14 @@ struct AlertHandler: TradeAlertHandling, Sendable {
             └──────────────────────────────┘
             """)
         } else {
+            let stopPrice = trade.targets.stopLoss ?? 0
             // Trade Exit Alert
             let profit = trade.isLong
                 ? recentBar.priceClose - trade.price
                 : trade.price - recentBar.priceClose
             let didHitStopLoss = trade.isLong
-                ? recentBar.priceClose <= trade.stopPrice
-                : recentBar.priceClose >= trade.stopPrice
+                ? recentBar.priceClose <= stopPrice
+                : recentBar.priceClose >= stopPrice
             
             print("""
             🛑 Trade Exit Alert 🛑

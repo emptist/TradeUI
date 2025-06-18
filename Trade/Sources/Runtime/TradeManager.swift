@@ -221,6 +221,15 @@ import OrderedCollections
         }
         registry.register(strategyType: DoNothingStrategy.self)
         registry.register(strategyType: FollowMovingAverageStrategy.self)
+        registry.register(strategyType: SurpriseBarStrategy.self)
+        registry.register(strategyType: RSIBasedStrategy.self)
+        registry.register(strategyType: SMACrossoverStrategy.self)
+        registry.register(strategyType: XStrategy.self)
+        registry.register(strategyType: MyStrategy.self)
+        registry.register(strategyType: MACDStrategy.self)
+        registry.register(strategyType: RSIMACDStrategy.self)
+        registry.register(strategyType: OneMinuteScalpingStrategy.self)
+        registry.register(strategyType: DojiScalpingStrategy.self)
     }
     
     @MainActor

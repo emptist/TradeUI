@@ -3,18 +3,53 @@ import IBKit
 
 extension InteractiveBrokers {
     @discardableResult
-    func limitOrder(
+    func marketOrder(
         contract: IBContract,
         action: IBAction,
         price: Double,
-        quantity: Double
+        quantity: Double,
+        group: String? = nil
     ) async throws -> AsyncStream<any OrderEvent> {
         guard let account = account?.name else {
             throw TradeError.requestError("Missing account identifier")
         }
-        var order = IBOrder.limit(price, action: action, quantity: quantity, contract: contract, account: account)
-        order.orderID = client.nextRequestID
-        return try await streamOrder(order)
+        var tpOrder = IBOrder.market(
+            action,
+            quantity: quantity,
+            contract: contract,
+            account: account,
+            validUntil: .immidiateOrCancel
+        )
+        tpOrder.orderID = client.nextRequestID
+        tpOrder.ocaGroup = group
+        tpOrder.ocaType = .cancelBlock
+        tpOrder.transmit = true
+        return try await streamOrder(tpOrder)
+    }
+    
+    @discardableResult
+    func limitOrder(
+        contract: IBContract,
+        action: IBAction,
+        price: Double,
+        quantity: Double,
+        group: String? = nil
+    ) async throws -> AsyncStream<any OrderEvent> {
+        guard let account = account?.name else {
+            throw TradeError.requestError("Missing account identifier")
+        }
+        var tpOrder = IBOrder.limit(
+            price,
+            action: action,
+            quantity: quantity,
+            contract: contract,
+            account: account
+        )
+        tpOrder.orderID = client.nextRequestID
+        tpOrder.ocaGroup = group
+        tpOrder.ocaType = .cancelBlock
+        tpOrder.transmit = true
+        return try await streamOrder(tpOrder)
     }
     
     func trailingStopOrder(
@@ -23,7 +58,8 @@ extension InteractiveBrokers {
         parentOrderId: Int = 0,
         price: Double,
         trailStopPrice: Double,
-        quantity: Double
+        quantity: Double,
+        group: String? = nil
     ) async throws -> AsyncStream<any OrderEvent> {
         guard let account = account?.name else {
             throw TradeError.requestError("Missing account identifier")
@@ -31,6 +67,7 @@ extension InteractiveBrokers {
         var order = IBOrder.trailingStop(stop: trailStopPrice, limit: price, action: action, quantity: quantity, contract: contract, account: account)
         order.orderID = client.nextRequestID
         order.parentId = parentOrderId
+        order.ocaGroup = group
         return try await streamOrder(order)
     }
     
@@ -40,7 +77,8 @@ extension InteractiveBrokers {
         action: IBAction,
         price: Double,
         targets: (takeProfit: Double?, stopLoss: Double?),
-        quantity: Double
+        quantity: Double,
+        group: String = UUID().uuidString
     ) throws -> AsyncStream<any OrderEvent> {
         guard let account = account?.name else {
             throw TradeError.requestError("Missing account identifier")
@@ -66,7 +104,7 @@ extension InteractiveBrokers {
             stopOrder.orderID = client.nextRequestID
             stopOrder.parentId = limitOrder.orderID
             stopOrder.ocaGroup = group
-            stopOrder.transmit = true
+            stopOrder.transmit = false
             orders.append(stopOrder)
         }
         
@@ -79,13 +117,13 @@ extension InteractiveBrokers {
         action: IBAction,
         price: Double,
         targets: (takeProfit: Double?, stopLoss: Double?),
-        quantity: Double
+        quantity: Double,
+        group: String = UUID().uuidString
     ) throws -> AsyncStream<any OrderEvent> {
         guard let account = account?.name else {
             throw TradeError.requestError("Missing account identifier")
         }
         
-        let group = UUID().uuidString
         let opposite = action == .buy ? IBAction.sell : .buy
         var orders: [IBOrder] = []
         var limitOrder = IBOrder.limit(
@@ -102,6 +140,22 @@ extension InteractiveBrokers {
         orders.append(limitOrder)
         
         if let stopLoss = targets.stopLoss {
+            var trailingStopOrder = IBOrder.trailingStop(
+                stop: stopLoss,
+                limit: price,
+                action: opposite,
+                quantity: quantity,
+                contract: contract,
+                account: account
+            )
+            
+            trailingStopOrder.orderID = client.nextRequestID
+            trailingStopOrder.parentId = limitOrder.orderID
+            trailingStopOrder.ocaGroup = group
+            trailingStopOrder.ocaType = .cancelBlock
+            trailingStopOrder.transmit = false
+            orders.append(trailingStopOrder)
+            
             var stopOrder = IBOrder.stop(
                 stopLoss,
                 action: opposite,
@@ -130,9 +184,10 @@ extension InteractiveBrokers {
             tpOrder.parentId = limitOrder.orderID
             tpOrder.ocaGroup = group
             tpOrder.ocaType = .cancelBlock
-            tpOrder.transmit = true
+            tpOrder.transmit = false
             orders.append(tpOrder)
         }
+        orders[orders.count - 1].transmit = true
         return streamOrders(orders)
     }
     

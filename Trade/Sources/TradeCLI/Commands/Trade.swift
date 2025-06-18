@@ -56,7 +56,7 @@ struct Trade: @preconcurrency ParsableCommand {
         
         trades.loadStrategy(into: registry, location: strategyFile)
         trades.initializeSockets()
-        guard let strategyName = registry.availableStrategies().first else {
+        guard let strategy = registry.availableStrategies().first else {
             if verbose { print("❌ Something went wrong loading strategies") }
             return
         }
@@ -65,7 +65,7 @@ struct Trade: @preconcurrency ParsableCommand {
             trades: trades,
             contract: instrument,
             interval: interval,
-            strategyName: strategyName
+            strategyId: strategy.id
         )
         
         // Keep the process alive
@@ -74,28 +74,13 @@ struct Trade: @preconcurrency ParsableCommand {
     }
     
     @MainActor
-    private func marketData(trades: TradeManager, contract: any Contract, interval: TimeInterval, strategyName: String) {
+    private func marketData(trades: TradeManager, contract: any Contract, interval: TimeInterval, strategyId id: String) {
         do {
-            guard let strategyType: Strategy.Type = StrategyRegistry.shared.strategy(forName: strategyName) else {
-                if verbose { print("❌ Failed to load strategy \(strategyName)") }
+            guard let strategyType: Strategy.Type = StrategyRegistry.shared.strategyType(forId: id) else {
+                if verbose { print("❌ Failed to load strategy for \(id)") }
                 return
             }
-            let asset = Asset(
-                instrument: Instrument(
-                    type: contract.type,
-                    symbol: contract.symbol,
-                    exchangeId: contract.exchangeId,
-                    currency: contract.currency
-                ),
-                interval: interval,
-                strategyName: strategyName
-            )
-            try trades.marketData(
-                contract: contract,
-                interval: interval,
-                strategyName: strategyName,
-                strategyType: strategyType
-            )
+            try trades.marketData(contract: contract, interval: interval, strategyType: strategyType)
         } catch {
             if verbose { print("🔴 Failed to subscribe IB market data with error:", error) }
         }

@@ -16,8 +16,8 @@ public final class TradeAggregator: Hashable {
 
     private var marketOrder: MarketOrder?
     private var tradeSignals: Set<Request> = []
-    private var activeSimulationTrades: [UUID: Trade] = [:]
-    private let stats = TradeStats()
+    public var activeSimulationTrades: [UUID: Trade] = [:]
+    public let stats = TradeStats()
     private let tradeQueue = DispatchQueue(label: "TradeAggregatorQueue", attributes: .concurrent)
 
     private var getNextTradingAlertsAction: (() -> Annoucment?)?
@@ -53,6 +53,7 @@ public final class TradeAggregator: Hashable {
 
         guard let _ = strategy.patternIdentified else {
             tradeQueue.sync(flags: .barrier) { _ = tradeSignals.remove(request) }
+            await manageActiveTrade(request)
             return
         }
          
@@ -61,6 +62,7 @@ public final class TradeAggregator: Hashable {
             (timeRemaining < 5.0 && timeRemaining > 0) || request.isSimulation
         else {
             tradeQueue.sync(flags: .barrier) { _ = tradeSignals.remove(request) }
+            await manageActiveTrade(request)
             return
         }
 
@@ -72,12 +74,14 @@ public final class TradeAggregator: Hashable {
             matchingRequests.count >= minConfirmations
         else {
             print("⏳ Waiting for confirmations: \(tradeSignals.count)/\(minConfirmations)")
+            await manageActiveTrade(request)
             return
         }
 
         let avgConfidence = matchingRequests.compactMap { $0.1?.confidence }.reduce(0, +) / Float(matchingRequests.count)
         guard avgConfidence > 0 else {
             print("⚠️ Low confidence: \(avgConfidence)")
+            await manageActiveTrade(request)
             return
         }
 
@@ -89,6 +93,7 @@ public final class TradeAggregator: Hashable {
 
         guard let requestToTrade = matchingRequest else {
             print("🔴 No matching request")
+            await manageActiveTrade(request)
             return
         }
 
@@ -160,11 +165,11 @@ private extension TradeAggregator {
         let units = strategy.shouldEnterWitUnitCount(
             signal: signal,
             entryBar: entryBar,
-            equity: request.isSimulation ? 1_000_000 : (marketOrder?.account?.buyingPower ?? 0),
-            tickValue: details?.tickValue ?? 1,
-            tickSize: details?.tickSize ?? 1,
-            feePerUnit: 10,
-            nextAnnoucment: request.isSimulation ? nil : getNextTradingAlertsAction?()
+            equity: request.isSimulation ? 2_000 : (marketOrder?.account?.buyingPower ?? 0),
+            tickValue: details?.tickValue ?? 12.5,
+            tickSize: details?.tickSize ?? 0.25,
+            feePerUnit: 50,
+            nextAnnouncment: request.isSimulation ? nil : getNextTradingAlertsAction?()
         )
 
         guard units > 0 else { return }
@@ -256,7 +261,8 @@ private extension TradeAggregator {
             action: action,
             price: roundedEntry,
             targets: (roundedTP, roundedSL),
-            quantity: trade.units
+            quantity: trade.units,
+            group: trade.id.uuidString
         )
     }
 
@@ -265,42 +271,64 @@ private extension TradeAggregator {
         let strategy = await request.watcherState.getStrategy()
         guard let recentBar = strategy.candles.last else { return }
 
-        if request.isSimulation {
-            await manageSimulation(request, recentBar: recentBar)
-        } else {
-            // TODO: Add dynamic should exit handling
+        for trade in activeSimulationTrades.values {
+            guard recentBar.timeOpen != trade.entryBar.timeOpen else { continue }
+            if request.isSimulation {
+                await manageSimulation(request, trade: trade, recentBar: recentBar, strategy: strategy)
+            } else {
+                await manageTrade(trade: trade, request: request, strategy: strategy)
+            }
         }
     }
     
-    private func manageSimulation(_ request: Request, recentBar: any Klines) async {
-        for trade in activeSimulationTrades.values {
-            let isLong = trade.isLong
+    private func manageTrade(trade: Trade, request: Request, strategy: any Strategy) async {
+        guard strategy.shouldExit(signal: trade.signal, entryBar: trade.entryBar, nextAnnouncment: nil) else { return }
+        guard let count = marketOrder?.account?.positions.first(where: { $0.symbol == contract.symbol })?.quantity else { return }
+        
+        guard let order = marketOrder else { return }
+        let action: OrderAction = trade.isLong ? .sell : .buy
+        
+        
+        guard let quote = await request.watcherState.getQuote() else {
+            print("⚠️ Market quote missing.")
+            return
+        }
+        let price = determineOrderPrice(signal: trade.signal, quote: quote, fallback: trade.price)
+        do {
+            try await order.makeLimitOrder(contract: contract, action: action, price: price, quantity: count, group: trade.id.uuidString)
+        } catch {
+            print("🔴 Failure to place order: \(error)")
+        }
+    }
+    
+    private func manageSimulation(_ request: Request, trade: Trade, recentBar: any Klines, strategy: any Strategy) async {
+        let isLong = trade.isLong
 
-            let hitStop = isLong
-                ? recentBar.priceLow <= (trade.targets.stopLoss ?? .infinity)
-                : recentBar.priceHigh >= (trade.targets.stopLoss ?? -.infinity)
+        let hitStop = isLong
+            ? recentBar.priceLow <= (trade.targets.stopLoss ?? -.infinity)
+            : recentBar.priceHigh >= (trade.targets.stopLoss ?? .infinity)
 
-            let hitProfit = isLong
-                ? recentBar.priceHigh >= (trade.targets.takeProfit ?? .infinity)
-                : recentBar.priceLow <= (trade.targets.takeProfit ?? -.infinity)
+        let hitProfit = isLong
+            ? recentBar.priceHigh >= (trade.targets.takeProfit ?? .infinity)
+            : recentBar.priceLow <= (trade.targets.takeProfit ?? -.infinity)
 
-            if hitStop || hitProfit {
-                let price = (await request.watcherState.getQuote())?.lastPrice ?? recentBar.priceClose
-                let result = TradeResult(
-                    entryTime: trade.entryBar.timeOpen,
-                    exitTime: recentBar.timeOpen,
-                    isLong: isLong,
-                    entryPrice: trade.price,
-                    exitPrice: price,
-                    profit: isLong ? price - trade.price : trade.price - price,
-                    targets: (hitProfit, hitStop),
-                    confidence: trade.signal.confidence,
-                    patternInformation: trade.patternInformation
-                )
-                stats.add(result)
-                
-                activeSimulationTrades[trade.id] = nil
-            }
+        let shouldExit = strategy.shouldExit(signal: trade.signal, entryBar: trade.entryBar, nextAnnouncment: nil)
+        
+        if shouldExit || hitStop || hitProfit {
+            let price = (await request.watcherState.getQuote())?.lastPrice ?? recentBar.priceClose
+            let result = TradeResult(
+                entryTime: trade.entryBar.timeOpen,
+                exitTime: recentBar.timeOpen,
+                isLong: isLong,
+                entryPrice: trade.price,
+                exitPrice: price,
+                profit: isLong ? price - trade.price : trade.price - price,
+                trade: trade,
+                exitReason: shouldExit ? .momentumExit : (hitStop ? .stopLoss : .takeProfit)
+            )
+            stats.add(result)
+            
+            activeSimulationTrades[trade.id] = nil
         }
     }
 }

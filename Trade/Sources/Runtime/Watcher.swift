@@ -27,9 +27,9 @@ public final class Watcher: @unchecked Sendable, Identifiable {
     private var marketDataTask: Task<Void, Never>?
     private var tradeTask: Task<Void, Never>?
     private var fileData: MarketDataFileProvider?
-    public var pullNext: Bool = true {
+    public var pullNext: Double = .greatestFiniteMagnitude {
         didSet {
-            guard !oldValue, pullNext else { return }
+            guard oldValue == 0, pullNext > 0 else { return }
             pull()
         }
     }
@@ -178,6 +178,7 @@ public final class Watcher: @unchecked Sendable, Identifiable {
                 let newStrategy = updateStrategy(bars: bars)
                 
                 await watcherState.updateStrategy(newStrategy)
+                let oldCount = self.tradeAggregator.activeSimulationTrades.count
                 await tradeAggregator?.registerTradeSignal(
                     TradeAggregator.Request(
                         isSimulation: isSimulation,
@@ -186,21 +187,27 @@ public final class Watcher: @unchecked Sendable, Identifiable {
                         interval: interval
                     )
                 )
-                
-                if pullNext {
-//                    pullNext = !(newStrategy.patternIdentified != nil)
+//                if newStrategy.patternIdentified != nil,
+//                   oldCount < self.tradeAggregator.activeSimulationTrades.count {
+//                    pullNext = 0
+//                }
+                if pullNext > 0 {
                     if let fileData = marketData as? MarketDataFileProvider,
                        let url = userInfo[MarketDataKey.snapshotFileURL.rawValue] as? URL {
                         fileData.pull(url: url)
                     }
                 }
             }
+            print("-- END --")
+            print("active trades", self.tradeAggregator.activeSimulationTrades.count)
+            self.tradeAggregator.stats.printStats(isEnd: true)
         } catch {
             print("Market data stream error: \(error)")
         }
     }
     
     private func pull() {
+        pullNext -= 1
         if let fileData, let url = userInfo[MarketDataKey.snapshotFileURL.rawValue] as? URL {
             fileData.pull(url: url)
         }

@@ -11,6 +11,7 @@ public struct SnapshotView: View {
     @EnvironmentObject var strategyRegistry: StrategyRegistry
     @State var strategy: (any Strategy)? = nil
     @State var interval: TimeInterval? = nil
+    @State var trades: [Trade] = []
     
     let node: FileSnapshotsView.FileNode?
     let fileProvider: CandleFileProvider
@@ -35,7 +36,7 @@ public struct SnapshotView: View {
                 if let strategy {
                     VStack {
                         StrategyCheckList(strategy: strategy)
-                        StrategyChart(strategy: strategy, interval: interval ?? 60)
+                        StrategyChart(strategy: strategy, interval: interval ?? 60, trades: [])
                     }
                 } else {
                     ProgressView()

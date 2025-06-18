@@ -35,13 +35,18 @@ public struct WatcherView: View {
                 if showChart, let strategy, let interval {
                     StrategyChart(
                         strategy: strategy,
-                        interval: interval
+                        interval: interval,
+                        trades: Array(watcher.tradeAggregator.activeSimulationTrades.values)
                     )
                     .id(watcher.id)
                     .overlay(alignment: .bottomLeading) {
                         HStack {
                             Button("Pull") {
-                                watcher.pullNext = true
+                                watcher.pullNext = .greatestFiniteMagnitude
+                            }
+                            
+                            Button("Pull 1") {
+                                watcher.pullNext = 1
                             }
                             
                             Button("Order") {

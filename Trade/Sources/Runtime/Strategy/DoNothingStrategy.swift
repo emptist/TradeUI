@@ -8,6 +8,7 @@ public struct DoNothingStrategy: Strategy {
     
     public let charts: [[Klines]]
     public let levels: [Level]
+    public let patterns: [(index: Int, pattern: PricePattern)] = []
     public let distribution: [[Phase]]
     public let indicators: [[String: [Double]]]
     public let resolution: [Scale]
@@ -42,12 +43,12 @@ public struct DoNothingStrategy: Strategy {
         tickValue: Double,
         tickSize: Double,
         feePerUnit cost: Double,
-        nextAnnoucment annoucment: Annoucment?
+        nextAnnouncment annoucment: Annoucment?
     ) -> Int {
         return 0
     }
     
-    public func shouldExit(signal: Signal, entryBar: Klines, nextAnnoucment annoucment: Annoucment?) -> Bool {
+    public func shouldExit(signal: Signal, entryBar: Klines, nextAnnouncment annoucment: Annoucment?) -> Bool {
         return true
     }
     

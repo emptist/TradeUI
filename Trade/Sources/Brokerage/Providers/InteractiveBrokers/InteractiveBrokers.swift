@@ -256,17 +256,35 @@ public class InteractiveBrokers: @unchecked Sendable, Market {
         try await client.cancelOrder(orderId)
     }
     
+    public func makeMarketOrder(
+        contract product: any Contract,
+        action: OrderAction,
+        price: Double,
+        quantity: Double,
+        group: String?
+    ) async throws {
+        try await marketOrder(
+            contract: self.contract(product),
+            action: action == .buy ? .buy : .sell,
+            price: price,
+            quantity: quantity,
+            group: group
+        )
+    }
+    
     public func makeLimitOrder(
         contract product: any Contract,
         action: OrderAction,
         price: Double,
-        quantity: Double
+        quantity: Double,
+        group: String?
     ) async throws {
         try await limitOrder(
             contract: self.contract(product),
             action: action == .buy ? .buy : .sell,
             price: price,
-            quantity: quantity
+            quantity: quantity,
+            group: group
         )
     }
     
@@ -275,14 +293,16 @@ public class InteractiveBrokers: @unchecked Sendable, Market {
         action: OrderAction,
         price: Double,
         targets: (takeProfit: Double?, stopLoss: Double?),
-        quantity: Double
+        quantity: Double,
+        group: String?
     ) async throws {
         try limitWithTrailingStopOrder(
             contract: self.contract(product),
             action: action == .buy ? .buy : .sell,
             price: price,
             targets: targets,
-            quantity: quantity
+            quantity: quantity,
+            group: group ?? UUID().uuidString
         )
     }
     
@@ -291,14 +311,16 @@ public class InteractiveBrokers: @unchecked Sendable, Market {
         action: OrderAction,
         price: Double,
         targets: (takeProfit: Double?, stopLoss: Double?),
-        quantity: Double
+        quantity: Double,
+        group: String?
     ) async throws {
         try limitWithStopOrder(
             contract: self.contract(product),
             action: action == .buy ? .buy : .sell,
             price: price,
             targets: targets,
-            quantity: quantity
+            quantity: quantity,
+            group: group ?? UUID().uuidString
         )
     }
     

@@ -16,7 +16,16 @@ public protocol MarketOrder: Sendable {
         contract product: any Contract,
         action: OrderAction,
         price: Double,
-        quantity: Double
+        quantity: Double,
+        group: String?
+    ) async throws
+    
+    func makeMarketOrder(
+        contract product: any Contract,
+        action: OrderAction,
+        price: Double,
+        quantity: Double,
+        group: String?
     ) async throws
     
     func makeLimitWithTrailingStopOrder(
@@ -24,7 +33,8 @@ public protocol MarketOrder: Sendable {
         action: OrderAction,
         price: Double,
         targets: (takeProfit: Double?, stopLoss: Double?),
-        quantity: Double
+        quantity: Double,
+        group: String?
     ) async throws
     
     func makeLimitWithStopOrder(
@@ -32,7 +42,8 @@ public protocol MarketOrder: Sendable {
         action: OrderAction,
         price: Double,
         targets: (takeProfit: Double?, stopLoss: Double?),
-        quantity: Double
+        quantity: Double,
+        group: String?
     ) async throws
 }
 
