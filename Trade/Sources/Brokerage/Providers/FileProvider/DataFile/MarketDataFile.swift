@@ -7,6 +7,6 @@ public protocol MarketDataFile {
     func save(strategyName: String, candleData: CandleData)
     func loadCandleData() -> CandleData?
     // Notify data provider, client is ready for another signal
-    func publish()
+    func publish() async throws
     func close()
 }

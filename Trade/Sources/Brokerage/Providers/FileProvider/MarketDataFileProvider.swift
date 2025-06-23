@@ -23,13 +23,15 @@ public final class MarketDataFileProvider: @unchecked Sendable, MarketData {
             .appendingPathComponent("Snapshots")
     }
     
-    public func pull(url: URL) {
+    public func pull(url: URL) async {
         guard let file = activeSubscriptions.first(where: { $0.fileUrl == url }) else {
             return
         }
-        Task {
+        do {
             try await Task.sleep(for: .milliseconds(5))
-            file.publish()
+            try await file.publish()
+        } catch {
+            print("Error publishing snapshot: \(error)")
         }
     }
     

@@ -19,7 +19,7 @@ public final class CSVMarketDataFile: @unchecked Sendable, MarketDataFile {
         continuation?.finish()
     }
     
-    public func publish() {
+    public func publish() async throws {
         guard let fileHandle = fileHandle else {
             continuation?.finish()
             return
@@ -34,24 +34,53 @@ public final class CSVMarketDataFile: @unchecked Sendable, MarketDataFile {
                   let high = Double(components[3]),
                   let low = Double(components[4]),
                   let close = Double(components[5]) else {
-                Task {
-                    try await Task.sleep(for: .milliseconds(200))
-                    await MainActor.run { publish() }
-                }
+                try await Task.sleep(for: .milliseconds(200))
+                try await publish()
                 return
             }
             let volume: Double? = (components.count >= 7) ? Double(components[6]) : nil
-            let bar = Bar(
+            let isBullish = close >= open
+            
+            var formingBar = Bar(
                 timeOpen: interval,
                 interval: barInterval,
                 priceOpen: open,
-                priceHigh: high,
-                priceLow: low,
-                priceClose: close,
+                priceHigh: open,
+                priceLow: open,
+                priceClose: open,
                 volume: volume
             )
+            
+            continuation?.yield(CandleData(symbol: symbol, interval: barInterval, bars: [formingBar]))
+            
+            // Step 2: extend to low or high
+            if isBullish {
+                formingBar.priceLow = low
+                formingBar.priceClose = low
+            } else {
+                formingBar.priceHigh = high
+                formingBar.priceClose = high
+            }
+            try await Task.sleep(for: .milliseconds(1))
+            continuation?.yield(CandleData(symbol: symbol, interval: barInterval, bars: [formingBar]))
+            
+            // Step 3: reach the opposite wick
+            if isBullish {
+                formingBar.priceHigh = high
+                formingBar.priceClose = high
+            } else {
+                formingBar.priceLow = low
+                formingBar.priceClose = low
+            }
+            try await Task.sleep(for: .milliseconds(1))
+            continuation?.yield(CandleData(symbol: symbol, interval: barInterval, bars: [formingBar]))
+            
+            // Step 4: set the close
+            formingBar.priceClose = close
+            try await Task.sleep(for: .milliseconds(1))
+            continuation?.yield(CandleData(symbol: symbol, interval: barInterval, bars: [formingBar]))
+            
             interval += barInterval
-            continuation?.yield(CandleData(symbol: symbol, interval: barInterval, bars: [bar]))
         } else {
             fileHandle.closeFile()
             self.interval = 0
@@ -82,7 +111,7 @@ public final class CSVMarketDataFile: @unchecked Sendable, MarketDataFile {
                 }
                 Task {
                     try await Task.sleep(for: .milliseconds(200))
-                    await MainActor.run { self.publish() }
+                    try await self.publish()
                 }
             }
         }
@@ -124,17 +153,17 @@ public final class CSVMarketDataFile: @unchecked Sendable, MarketDataFile {
             }
             
             var bars: [Bar] = []
-            while let line = fileHandle.readLine()?.toString() {
-                let components = line.split(separator: Character(delimiter)).map { String($0) }
-                guard components.count >= 5,
+            while let line = fileHandle.readLine()?.toString()?.trimmingCharacters(in: .whitespacesAndNewlines) {
+                let components = line.split(separator: delimiter).map { String($0) }
+                guard components.count >= 6,
                       let timestamp = parseTimeInterval(components[0]),
-                      let open = Double(components[1]),
-                      let high = Double(components[2]),
-                      let low = Double(components[3]),
-                      let close = Double(components[4]) else {
+                      let open = Double(components[2]),
+                      let high = Double(components[3]),
+                      let low = Double(components[4]),
+                      let close = Double(components[5]) else {
                     continue
                 }
-                let volume: Double? = components.count >= 6 ? Double(components[5]) : nil
+                let volume: Double? = (components.count >= 7) ? Double(components[6]) : nil
                 let bar = Bar(
                     timeOpen: timestamp,
                     interval: 60.0,

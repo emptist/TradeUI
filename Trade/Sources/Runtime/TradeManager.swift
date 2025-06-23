@@ -230,6 +230,7 @@ import OrderedCollections
         registry.register(strategyType: RSIMACDStrategy.self)
         registry.register(strategyType: OneMinuteScalpingStrategy.self)
         registry.register(strategyType: DojiScalpingStrategy.self)
+        registry.register(strategyType: MomentumReversalStrategy.self)
     }
     
     @MainActor

@@ -173,7 +173,6 @@ public final class Watcher: @unchecked Sendable, Identifiable {
             ) {
                 if Task.isCancelled { break }
                 let isSimulation = marketData is MarketDataFileProvider
-                
                 let bars = await updateBars(candlesData.bars, isSimulation: isSimulation)
                 let newStrategy = updateStrategy(bars: bars)
                 
@@ -187,14 +186,14 @@ public final class Watcher: @unchecked Sendable, Identifiable {
                         interval: interval
                     )
                 )
-//                if newStrategy.patternIdentified != nil,
-//                   oldCount < self.tradeAggregator.activeSimulationTrades.count {
-//                    pullNext = 0
-//                }
+                if newStrategy.patternIdentified != nil,
+                   oldCount < self.tradeAggregator.activeSimulationTrades.count {
+                    pullNext = 0
+                }
                 if pullNext > 0 {
                     if let fileData = marketData as? MarketDataFileProvider,
                        let url = userInfo[MarketDataKey.snapshotFileURL.rawValue] as? URL {
-                        fileData.pull(url: url)
+                        await fileData.pull(url: url)
                     }
                 }
             }
@@ -209,7 +208,9 @@ public final class Watcher: @unchecked Sendable, Identifiable {
     private func pull() {
         pullNext -= 1
         if let fileData, let url = userInfo[MarketDataKey.snapshotFileURL.rawValue] as? URL {
-            fileData.pull(url: url)
+            Task {
+                await fileData.pull(url: url)
+            }
         }
     }
     
