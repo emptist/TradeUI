@@ -35,7 +35,7 @@ extension Instrument {
     // MARK: Helper
     private static func currentFuturesSymbol(base: String) -> String {
         let calendar = Calendar(identifier: .gregorian)
-        let now = Date()
+        let now = Date().addingTimeInterval(14 * 24 * 60 * 60)
         let year = calendar.component(.year, from: now) % 10
         let month = calendar.component(.month, from: now)
 
