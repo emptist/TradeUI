@@ -231,6 +231,8 @@ import OrderedCollections
         registry.register(strategyType: OneMinuteScalpingStrategy.self)
         registry.register(strategyType: DojiScalpingStrategy.self)
         registry.register(strategyType: MomentumReversalStrategy.self)
+        registry.register(strategyType: ORBStrategy.self)
+        registry.register(strategyType: ThreeCandleVolumeStrategy.self)
     }
     
     @MainActor

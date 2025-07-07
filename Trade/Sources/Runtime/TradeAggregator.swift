@@ -16,6 +16,7 @@ public final class TradeAggregator: Hashable {
 
     private var marketOrder: MarketOrder?
     private var tradeSignals: Set<Request> = []
+    private var lastEnteredCandleTime: TimeInterval = 0
     public var activeSimulationTrades: [UUID: Trade] = [:]
     public let stats = TradeStats()
     private let tradeQueue = DispatchQueue(label: "TradeAggregatorQueue", attributes: .concurrent)
@@ -57,14 +58,14 @@ public final class TradeAggregator: Hashable {
             return
         }
          
-        guard
-            let timeRemaining = strategy.candles.last?.timeRemaining,
-            (timeRemaining < 5.0 && timeRemaining > 0) || request.isSimulation
-        else {
-            tradeQueue.sync(flags: .barrier) { _ = tradeSignals.remove(request) }
-            await manageActiveTrade(request)
-            return
-        }
+//        guard
+//            let timeRemaining = strategy.candles.last?.timeRemaining,
+//            (timeRemaining < 5.0 && timeRemaining > 0) || request.isSimulation
+//        else {
+//            tradeQueue.sync(flags: .barrier) { _ = tradeSignals.remove(request) }
+//            await manageActiveTrade(request)
+//            return
+//        }
 
         let alignedRequests = await alignedTradeRequests(request)
         let (confirmedSignal, matchingRequests) = majorityVote(alignedRequests)
@@ -160,6 +161,12 @@ private extension TradeAggregator {
 
         let strategy = await request.watcherState.getStrategy()
         guard let entryBar = strategy.candles.last else { return }
+        
+        guard entryBar.timeOpen != lastEnteredCandleTime else {
+            // 🟡 Already entered trade for this candle.
+            return
+        }
+        
         let details = await request.watcherState.getTradingHours()?.first
         let targets = strategy.exitTargets(for: signal, entryBar: entryBar)
         let units = strategy.shouldEnterWitUnitCount(
@@ -168,7 +175,7 @@ private extension TradeAggregator {
             equity: request.isSimulation ? 2_000 : (marketOrder?.account?.buyingPower ?? 0),
             tickValue: details?.tickValue ?? 12.5,
             tickSize: details?.tickSize ?? 0.25,
-            feePerUnit: 50,
+            feePerUnit: 10,
             nextAnnouncment: request.isSimulation ? nil : getNextTradingAlertsAction?()
         )
 
@@ -183,6 +190,7 @@ private extension TradeAggregator {
             patternInformation: strategy.patternInformation
         )
 
+        lastEnteredCandleTime = entryBar.timeOpen
         if request.isSimulation {
             activeSimulationTrades[trade.id] = trade
         } else {

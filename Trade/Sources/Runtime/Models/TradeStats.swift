@@ -83,18 +83,12 @@ public final class TradeStats {
     
     public func add(_ result: TradeResult) {
         results.append(result)
-        printTrade(result)
         
         let now = Date()
         if results.count % 10 == 0 || now.timeIntervalSince(lastPrinted) > 10 {
             printStats(isEnd: false)
             lastPrinted = now
         }
-    }
-    
-    private func printTrade(_ result: TradeResult) {
-        let direction = result.isLong ? "Long" : "Short"
-                print("❌ \(direction) profit: \(result.profit) time: \(result.tradeDuration) exitReason: \(result.exitReason) entry: \(result.entryPrice), exit: \(result.exitPrice), info: \(result.trade)")
     }
     
     public func printStats(isEnd: Bool) {

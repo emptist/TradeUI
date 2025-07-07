@@ -17,6 +17,7 @@ public final class Watcher: @unchecked Sendable, Identifiable {
         return 200 * multiplier
     }
     
+    public let isSimulation: Bool
     public var symbol: String { contract.symbol }
     public var id: String { "\(strategyType.id)\(contract.label):\(interval)" }
     public var displayName: String { "\(symbol): \(interval.formatCandleTimeInterval())" }
@@ -59,17 +60,10 @@ public final class Watcher: @unchecked Sendable, Identifiable {
         self.strategyType = strategyType
         self.tradeAggregator = tradeAggregator
         self.fileData = marketData as? MarketDataFileProvider
-        
+        self.isSimulation = marketData is MarketDataFileProvider
         self.watcherState = WatcherStateActor(initialStrategy: strategyType.init(candles: []))
-        self.quoteTask = Task { [weak self, marketData] in
-            guard let self else { return }
-            await self.setupMarketQuoteData(market: marketData)
-        }
-        self.marketDataTask = Task { [weak self, marketData] in
-            guard let self else { return }
-            await self.setupMarketData(marketData: marketData, fileProvider: fileProvider)
-        }
         
+        reconnectToLiveFeed(using: marketData, fileProvider: fileProvider)
         fetchTredingHours(marketData: marketData)
     }
     
@@ -110,6 +104,50 @@ public final class Watcher: @unchecked Sendable, Identifiable {
             fileProvider: fileProvider,
             userInfo: userInfo
         )
+    }
+    
+    public func disconnectFromLiveFeed() async {
+        quoteTask?.cancel()
+        marketDataTask?.cancel()
+        tradeTask?.cancel()
+        quoteTask = nil
+        marketDataTask = nil
+        tradeTask = nil
+    }
+    
+    public func reconnectToLiveFeed(using marketData: MarketData, fileProvider: CandleFileProvider) {
+        quoteTask?.cancel()
+        marketDataTask?.cancel()
+        
+        self.quoteTask = Task { [weak self, marketData] in
+            guard let self else { return }
+            await self.setupMarketQuoteData(market: marketData)
+        }
+        self.marketDataTask = Task { [weak self, marketData] in
+            guard let self else { return }
+            await self.setupMarketData(marketData: marketData, fileProvider: fileProvider)
+        }
+    }
+    
+    public func switchToHistorical(start: Date, end: Date, using marketData: MarketData) async {
+        await disconnectFromLiveFeed()
+        Task {
+            do {
+                let stream = try marketData.marketDataSnapshot(
+                    contract: contract,
+                    interval: interval,
+                    startDate: start,
+                    endDate: end,
+                    userInfo: userInfo
+                )
+                for await candlesData in stream {
+                    let newStrategy = updateStrategy(bars: candlesData.bars)
+                    await watcherState.updateStrategy(newStrategy)
+                }
+            } catch {
+                print("⚠️ Failed to fetch historical data: \(error)")
+            }
+        }
     }
     
     public func saveCandles(fileProvider: CandleFileProvider) {
@@ -186,10 +224,10 @@ public final class Watcher: @unchecked Sendable, Identifiable {
                         interval: interval
                     )
                 )
-                if newStrategy.patternIdentified != nil,
-                   oldCount < self.tradeAggregator.activeSimulationTrades.count {
-                    pullNext = 0
-                }
+//                if newStrategy.patternIdentified != nil,
+//                   oldCount < self.tradeAggregator.activeSimulationTrades.count {
+//                    pullNext = 0
+//                }
                 if pullNext > 0 {
                     if let fileData = marketData as? MarketDataFileProvider,
                        let url = userInfo[MarketDataKey.snapshotFileURL.rawValue] as? URL {
@@ -253,6 +291,11 @@ public final class Watcher: @unchecked Sendable, Identifiable {
     }
     
     // MARK: - Types
+    
+    public enum DataMode: Hashable {
+        case live
+        case historical(start: Date, end: Date)
+    }
     
     public actor WatcherStateActor {
         private var quote: Quote?
