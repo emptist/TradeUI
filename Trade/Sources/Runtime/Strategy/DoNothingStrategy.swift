@@ -1,10 +1,13 @@
 import Foundation
 import TradingStrategy
 
-public struct DoNothingStrategy: Strategy {
+public struct DoNothingStrategy: Strategy, Versioned {
     public static let id = "com.view.only"
     public static let name = "Viewing only"
-    public static let version: (major: Int, minor: Int, patch: Int) = (1, 0, 0)
+    public static let description: String = "A strategy that doesn't execute any trades"
+    
+    // Conformance to Versioned protocol
+    public static let version: String = "1.0.0"
     
     public let charts: [[Klines]]
     public let levels: [Level]

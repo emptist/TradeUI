@@ -5,7 +5,7 @@ import TradingStrategy
 
 public struct SnapshotPlaybackView: View {
     @Environment(\.presentationMode) var presentationMode
-    @AppStorage("selected.strategy.id") private var selectedStrategyId: String = DoNothingStrategy.id
+    @AppStorage("selected.strategy.id") private var selectedStrategyId: String = TradingStrategy.DoNothingStrategy.id
     @State var watcher: Watcher?
     
     let node: FileSnapshotsView.FileNode?

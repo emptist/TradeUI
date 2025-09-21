@@ -5,12 +5,12 @@ import Brokerage
 import Runtime
 
 struct DashboardView: View {
-    @AppStorage("selected.strategy.id") private var selectedStrategyId: String = DoNothingStrategy.id
+    @AppStorage("selected.strategy.id") private var selectedStrategyId: String = TradingStrategy.DoNothingStrategy.id
     @AppStorage("trade.alert.sound") private var alertSoundEnabled: Bool = true
     @AppStorage("trade.alert.message") private var alertMessageEnabled: Bool = true
     @AppStorage("selected.interval") private var interval: TimeInterval = 60
     @Environment(TradeManager.self) private var trades
-    @EnvironmentObject var strategyRegistry: StrategyRegistry
+    @EnvironmentObject private var strategyRegistry: StrategyRegistry
     
     @State private var viewModel = ViewModel()
     @State private var account: Account?
@@ -139,7 +139,8 @@ struct DashboardView: View {
             let instruments = [Instrument.NQ, Instrument.ES, Instrument.RTY]
             await MainActor.run {
                 for asset in instruments {
-                    self.marketData(contract: asset, interval: 15 * 60, strategyId: FollowMovingAverageStrategy.id)
+                    // Use TradingStrategy module's DoNothingStrategy to avoid ambiguity
+                    self.marketData(contract: asset, interval: 15 * 60, strategyId: TradingStrategy.DoNothingStrategy.id)
                 }
             }
         }
@@ -191,8 +192,14 @@ struct DashboardView: View {
     var charts: some View {
         ScrollView(.vertical) {
             VStack(alignment: .leading) {
-                ForEach(Array(trades.watchersGroups()), id: \.key) { aggregator, watchers in
-                    aggregatorSection(aggregator, watchers: watchers)
+                // Create a dictionary to store watchers by aggregator ID
+                let watchersByAggregator = trades.watchersGroups()
+                
+                // Iterate through each aggregator and its watchers
+                ForEach(Array(watchersByAggregator.keys), id: \.self) { aggregator in
+                    if let watchers = watchersByAggregator[aggregator] {
+                        aggregatorSection(aggregator, watchers: watchers)
+                    }
                 }
             }
             .padding([.horizontal, .bottom])
@@ -207,12 +214,16 @@ struct DashboardView: View {
             header: aggregatorSectionHeader(aggregator, watchers: watchers),
             content:  {
                 ForEach(watchers, id: \.id) { watcher in
-                    WatcherView(watcher: watcher, showChart: false, showActions: true)
-                        .if(watchers.count > 1 && watcher.contract.label == aggregator.contract.label) { view in
-                            view.badge(label: "⚡︎", color: .blue.opacity(0.6), alignment: .topLeading)
+                    Group {
+                        if watchers.count > 1 && watcher.contract.label == aggregator.contract.label {
+                            WatcherView(watcher: watcher, showChart: false, showActions: true)
+                                .badge(label: "⚡︎", color: .blue.opacity(0.6), alignment: .topLeading)
+                        } else {
+                            WatcherView(watcher: watcher, showChart: false, showActions: true)
                         }
-                        .contentShape(Rectangle())
-                        .onDrag {
+                    }
+                    .contentShape(Rectangle())
+                    .onDrag {
                             NSItemProvider(object: watcher.id as NSString)
                         }
                         .onDrop(of: [.text], isTargeted: nil) { providers in
@@ -275,11 +286,12 @@ struct DashboardView: View {
     }
     
     private func handleDrop(providers: [NSItemProvider], targetWatcher: Watcher) -> Bool {
-            guard let provider = providers.first else { return false }
-            provider.loadObject(ofClass: NSString.self) { (id, error) in
-                guard let idString = id as? String else { return }
-                
-                DispatchQueue.main.async {
+        guard let provider = providers.first else { return false }
+        provider.loadObject(ofClass: NSString.self) { (id, error) in
+            guard let idString = id as? String else { return }
+            
+            Task {
+                await MainActor.run {
                     if let draggedWatcher = trades.watchers[idString] {
                         draggedWatcher.tradeAggregator = targetWatcher.tradeAggregator
                         targetWatcher.tradeAggregator.minConfirmations += 1
@@ -287,8 +299,9 @@ struct DashboardView: View {
                     }
                 }
             }
-            return true
         }
+        return true
+    }
     
     private func marketData(contract: any Contract, interval: TimeInterval, strategyId: String) {
         do {

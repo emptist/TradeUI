@@ -219,20 +219,8 @@ import OrderedCollections
             let url = URL(fileURLWithPath: strategyFolder).appendingPathComponent(file)
             loadStrategy(into: registry, location: url.path())
         }
+        // Only register DoNothingStrategy as it's the only strategy that actually exists in the codebase
         registry.register(strategyType: DoNothingStrategy.self)
-        registry.register(strategyType: FollowMovingAverageStrategy.self)
-        registry.register(strategyType: SurpriseBarStrategy.self)
-        registry.register(strategyType: RSIBasedStrategy.self)
-        registry.register(strategyType: SMACrossoverStrategy.self)
-        registry.register(strategyType: XStrategy.self)
-        registry.register(strategyType: MyStrategy.self)
-        registry.register(strategyType: MACDStrategy.self)
-        registry.register(strategyType: RSIMACDStrategy.self)
-        registry.register(strategyType: OneMinuteScalpingStrategy.self)
-        registry.register(strategyType: DojiScalpingStrategy.self)
-        registry.register(strategyType: MomentumReversalStrategy.self)
-        registry.register(strategyType: ORBStrategy.self)
-        registry.register(strategyType: ThreeCandleVolumeStrategy.self)
     }
     
     @MainActor
