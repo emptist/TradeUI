@@ -19,7 +19,9 @@ public class InteractiveBrokers: @unchecked Sendable, Market {
     
 //    private let client = IBClient.live(id: 0, type: .gateway)
 //    let client = IBClient.paper(id: 0, type: .gateway)
-    let client = IBClient.paper(id: 0, type: .gateway)
+    
+//    let client = IBClient.paper(id: 0, type: .workstation) //.gateway)
+    let client = IBClient.live(id: 0, type: .workstation) //.gateway)
     private let queue = DispatchQueue(label: "InteractiveBrokers.syncQueue", attributes: .concurrent)
     private var _accounts: [String: Account] = [:]
     

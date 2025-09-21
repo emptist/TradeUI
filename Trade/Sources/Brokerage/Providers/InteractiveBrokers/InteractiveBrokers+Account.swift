@@ -2,6 +2,15 @@ import Foundation
 import IBKit
 
 public extension InteractiveBrokers {
+    // MARK: - Access Specific Account by ID
+    func getAccount(id: String) -> Account? {
+        return accounts[id]
+    }
+    
+    // MARK: - List All Account IDs
+    var allAccountIDs: [String] {
+        return Array(accounts.keys)
+    }
     // MARK: - Start Listening to Account Updates
     func startListening(accountId: String) async {
         if self.accounts[accountId] == nil {
