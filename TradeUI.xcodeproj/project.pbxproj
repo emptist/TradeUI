@@ -12,6 +12,7 @@
 		365ADED52BF388E4003403B3 /* LICENSE.md in Resources */ = {isa = PBXBuildFile; fileRef = 365ADED32BF388E4003403B3 /* LICENSE.md */; };
 		365ADED62BF388E4003403B3 /* README.md in Resources */ = {isa = PBXBuildFile; fileRef = 365ADED42BF388E4003403B3 /* README.md */; };
 		368BFD172DC846D0008527EA /* Run-Strategy-With-TradeUI-and-IB.md in Resources */ = {isa = PBXBuildFile; fileRef = 368BFD162DC846C9008527EA /* Run-Strategy-With-TradeUI-and-IB.md */; };
+		48703D4C2E8008C700851FC1 /* TradingStrategy in Frameworks */ = {isa = PBXBuildFile; productRef = 48703D4B2E8008C700851FC1 /* TradingStrategy */; };
 		AD6F73B42B67A6080012F5F8 /* TradeApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD6F73B32B67A6080012F5F8 /* TradeApp.swift */; };
 		AD6F73B82B67A60B0012F5F8 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = AD6F73B72B67A60B0012F5F8 /* Assets.xcassets */; };
 /* End PBXBuildFile section */
@@ -47,6 +48,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				365ADECF2BF3871A003403B3 /* TradeInterface in Frameworks */,
+				48703D4C2E8008C700851FC1 /* TradingStrategy in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -119,6 +121,7 @@
 			name = TradeUI;
 			packageProductDependencies = (
 				365ADECE2BF3871A003403B3 /* TradeInterface */,
+				48703D4B2E8008C700851FC1 /* TradingStrategy */,
 			);
 			productName = TradeWithIt;
 			productReference = AD6F73B02B67A6080012F5F8 /* Trade With It.app */;
@@ -150,6 +153,7 @@
 			mainGroup = AD6F73A72B67A6080012F5F8;
 			packageReferences = (
 				365ADECD2BF3871A003403B3 /* XCLocalSwiftPackageReference "Trade" */,
+				48703D4A2E8008C700851FC1 /* XCLocalSwiftPackageReference "../Strategy" */,
 			);
 			productRefGroup = AD6F73B12B67A6080012F5F8 /* Products */;
 			projectDirPath = "";
@@ -419,12 +423,20 @@
 			isa = XCLocalSwiftPackageReference;
 			relativePath = Trade;
 		};
+		48703D4A2E8008C700851FC1 /* XCLocalSwiftPackageReference "../Strategy" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = ../Strategy;
+		};
 /* End XCLocalSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
 		365ADECE2BF3871A003403B3 /* TradeInterface */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = TradeInterface;
+		};
+		48703D4B2E8008C700851FC1 /* TradingStrategy */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = TradingStrategy;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
