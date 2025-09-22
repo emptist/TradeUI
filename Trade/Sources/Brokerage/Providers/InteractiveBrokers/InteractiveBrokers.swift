@@ -35,7 +35,9 @@ public class InteractiveBrokers: @unchecked Sendable, Market {
     }
     
     public var account: Account? {
-        queue.sync { _accounts.first?.value }
+        queue.sync {
+            self.getDefaultAccount()
+        }
     }
     
     private var _unsubscribeMarketData: Set<Asset> = []
