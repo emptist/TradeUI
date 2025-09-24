@@ -23,8 +23,8 @@ let package = Package(
         .package(url: "https://github.com/TradeWithIt/ForexFactory", branch: "main"),
         
         // MARK: Trading Strategy
-        // Using local Strategy package
-        .package(path: "/Users/jk/gits/hub/SwiftTraderRepos/Strategy"),
+        // Using remote Strategy package with trae01 branch
+        .package(url: "https://github.com/emptist/Strategy.git", branch: "trae01"),
         
         // MARK: Tools
         .package(url: "https://github.com/apple/swift-collections.git", .upToNextMinor(from: "1.1.0")),

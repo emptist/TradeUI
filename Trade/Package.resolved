@@ -1,5 +1,5 @@
 {
-  "originHash" : "e07ba368d110ceb4cbf50de01c6dabf4b3875a318a9fc8444c040da5070595cc",
+  "originHash" : "08010319160527d391ef4e0c3ee05e162e406687c1727e6e696de884d23c788f",
   "pins" : [
     {
       "identity" : "forexfactory",
@@ -17,6 +17,15 @@
       "state" : {
         "branch" : "main",
         "revision" : "fc330c463ae50b7a93bfc4d2d63a78f094560473"
+      }
+    },
+    {
+      "identity" : "strategy",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/emptist/Strategy.git",
+      "state" : {
+        "branch" : "trae01",
+        "revision" : "61fe7ccc22db31f6f8fea8b530701ddc36708447"
       }
     },
     {
