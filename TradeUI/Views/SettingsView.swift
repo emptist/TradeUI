@@ -18,30 +18,40 @@ struct SettingsView: View {
     }
     
     var body: some View {
-        Form {
-            Section("Trading Environment") {
-                Picker("Trading Mode", selection: $tradingMode) {
-                    ForEach(TradingMode.allCases, id: \.self) { mode in
-                        Text(mode.rawValue).tag(mode)
+        VStack(alignment: .leading, spacing: 16) {
+            GroupBox(label: Text("Trading Environment")) {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Trading Mode")
+                        .font(.caption)
+                    Picker("Trading Mode", selection: $tradingMode) {
+                        ForEach(TradingMode.allCases, id: \.self) { mode in
+                            Text(mode.rawValue).tag(mode)
+                        }
                     }
-                }
-                .pickerStyle(.segmented)
-                
-                Picker("Connection Type", selection: $connectionType) {
-                    ForEach(ConnectionType.allCases, id: \.self) { type in
-                        Text(type.rawValue).tag(type)
+                    .pickerStyle(.segmented)
+
+                    Text("Connection Type")
+                        .font(.caption)
+                    Picker("Connection Type", selection: $connectionType) {
+                        ForEach(ConnectionType.allCases, id: \.self) { type in
+                            Text(type.rawValue).tag(type)
+                        }
                     }
+                    .pickerStyle(.segmented)
                 }
-                .pickerStyle(.segmented)
+                .padding(.vertical, 4)
             }
-            
-            Section("Connection Status") {
+
+            GroupBox(label: Text("Connection Status")) {
                 HStack {
-                    Text("Status:")
-                    Text(trades.market.isConnected ? "Connected" : "Disconnected")
-                        .foregroundColor(trades.market.isConnected ? .green : .red)
+                    Text("Provider:")
+                    Text(String(describing: type(of: trades.market)))
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
                 }
+                .padding(.vertical, 4)
             }
+            Spacer()
         }
         .padding()
         .frame(minWidth: 300, minHeight: 200)

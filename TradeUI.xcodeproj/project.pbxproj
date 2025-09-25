@@ -14,6 +14,7 @@
 		368BFD172DC846D0008527EA /* Run-Strategy-With-TradeUI-and-IB.md in Resources */ = {isa = PBXBuildFile; fileRef = 368BFD162DC846C9008527EA /* Run-Strategy-With-TradeUI-and-IB.md */; };
 		48703D4C2E8008C700851FC1 /* TradingStrategy in Frameworks */ = {isa = PBXBuildFile; productRef = 48703D4B2E8008C700851FC1 /* TradingStrategy */; };
 		AD6F73B42B67A6080012F5F8 /* TradeApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD6F73B32B67A6080012F5F8 /* TradeApp.swift */; };
+		99AABBCCDDEEFF0011223344 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 99AABBCCDDEEFF0011223345 /* SettingsView.swift */; };
 		AD6F73B82B67A60B0012F5F8 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = AD6F73B72B67A60B0012F5F8 /* Assets.xcassets */; };
 /* End PBXBuildFile section */
 
@@ -39,6 +40,7 @@
 		AD1614732B6F5CC300EF68B5 /* TradeUI.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = TradeUI.entitlements; sourceTree = "<group>"; };
 		AD6F73B02B67A6080012F5F8 /* Trade With It.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Trade With It.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		AD6F73B32B67A6080012F5F8 /* TradeApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TradeApp.swift; sourceTree = "<group>"; };
+		99AABBCCDDEEFF0011223345 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Views/SettingsView.swift; sourceTree = "<group>"; };
 		AD6F73B72B67A60B0012F5F8 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -97,6 +99,7 @@
 				365ADED12BF388B2003403B3 /* Preview Content */,
 				AD1614732B6F5CC300EF68B5 /* TradeUI.entitlements */,
 				AD6F73B32B67A6080012F5F8 /* TradeApp.swift */,
+				99AABBCCDDEEFF0011223345 /* SettingsView.swift */,
 				AD6F73B72B67A60B0012F5F8 /* Assets.xcassets */,
 			);
 			path = TradeUI;
@@ -185,6 +188,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				AD6F73B42B67A6080012F5F8 /* TradeApp.swift in Sources */,
+				99AABBCCDDEEFF0011223344 /* SettingsView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
