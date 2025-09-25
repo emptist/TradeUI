@@ -78,9 +78,11 @@ public class InteractiveBrokers: @unchecked Sendable, Market {
     /// Force recreation of the underlying IBClient and restart its event loop. Call this after UserDefaults change.
     public func recreateClient() {
         clientLock.sync {
+            print("InteractiveBrokers: recreateClient() — recreating IBClient from UserDefaults")
             _client = makeClient()
             if let c = _client {
                 startEventLoop(for: c)
+                print("InteractiveBrokers: recreateClient() — started event loop for new client: \(c)")
             }
         }
     }
@@ -148,7 +150,9 @@ public class InteractiveBrokers: @unchecked Sendable, Market {
 
     public func connect() async throws {
         do {
+            print("InteractiveBrokers: connect() — delegating to client.connect()")
             try await client.connect()
+            print("InteractiveBrokers: connect() succeeded")
         } catch {
             print("🔴 failed to connect to Interactive Brokers:", error)
             throw error
@@ -156,7 +160,9 @@ public class InteractiveBrokers: @unchecked Sendable, Market {
     }
 
     public func disconnect() async throws {
+        print("InteractiveBrokers: disconnect() — delegating to client.disconnect()")
         await client.disconnect()
+        print("InteractiveBrokers: disconnect() returned")
     }
 
     func contract(_ product: any Contract) -> IBContract {
