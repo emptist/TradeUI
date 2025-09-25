@@ -22,7 +22,6 @@ public enum LogLevel: Int, CaseIterable, CustomStringConvertible, Sendable {
         }
     }
 }
-
 /// Simple application logger that writes to unified logging (os.Logger)
 /// and optionally appends to a rotating file in Application Support.
 public actor AppLog {
@@ -72,6 +71,19 @@ public actor AppLog {
             let dir = appSupport.appendingPathComponent("Trade With It/Logs", isDirectory: true)
             try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
             logFileURL = dir.appendingPathComponent("app.log")
+        }
+        // Read persisted preferences at actor init so defaults written externally take effect.
+        let ud = UserDefaults.standard
+        if ud.object(forKey: "logging.enabled") != nil {
+            enabledInternal = ud.bool(forKey: "logging.enabled")
+        }
+        if let lvl = ud.string(forKey: "logging.level")?.lowercased() {
+            switch lvl {
+            case "debug": fileLogLevel = .debug
+            case "info": fileLogLevel = .info
+            case "error": fileLogLevel = .error
+            default: break
+            }
         }
     }
 
