@@ -12,6 +12,7 @@ struct SettingsView: View {
     @State private var reconnecting: Bool = false
     @State private var reconnectTask: Task<Void, Never>? = nil
     @AppStorage("logging.enabled") private var loggingEnabled: Bool = false
+    @AppStorage("logging.level") private var loggingLevelRaw: String = "debug"
 
     // Computed bindings for Pickers using the raw storage
     private var tradingMode: Binding<TradingMode> {
@@ -86,11 +87,33 @@ struct SettingsView: View {
             }
 
             GroupBox(label: Text("Connection Status")) {
-                HStack {
-                    Text("Provider:")
-                    Text(String(describing: type(of: trades.market)))
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack {
+                        Text("Provider:")
+                        Text(String(describing: type(of: trades.market)))
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                    }
+                    HStack {
+                        Text("Last connect:")
+                        Spacer()
+                        if let t = trades.lastConnectTime {
+                            Text(t, style: .relative)
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
+                        } else {
+                            Text("—")
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                    HStack {
+                        Text("Status:")
+                        Spacer()
+                        Text(trades.lastConnectStatus ?? "—")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                    }
                 }
                 .padding(.vertical, 4)
             }
@@ -133,6 +156,27 @@ struct SettingsView: View {
                     .help(
                         "Enable writing debug logs to ~/Library/Application Support/Trade With It/Logs/app.log"
                     )
+
+                    Picker(
+                        "Log level",
+                        selection: Binding(
+                            get: { loggingLevelRaw },
+                            set: { newValue in
+                                loggingLevelRaw = newValue
+                                // Map the raw string to our LogLevel and update AppLog
+                                let lvl: LogLevel =
+                                    LogLevel(
+                                        rawValue: ["debug", "info", "error"].firstIndex(
+                                            of: newValue) ?? 0) ?? .debug
+                                AppLog.setFileLogLevel(lvl)
+                            }
+                        )
+                    ) {
+                        Text("Debug").tag("debug")
+                        Text("Info").tag("info")
+                        Text("Error").tag("error")
+                    }
+                    .labelsHidden()
 
                     if let url = AppLog.logFileURLPublic {
                         HStack {
