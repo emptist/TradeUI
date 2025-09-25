@@ -71,10 +71,11 @@ struct TradeApp: App {
             }
         }
 
-        WindowGroup("Settings") {
+        WindowGroup("Settings", id: "settings") {
             SettingsView()
                 .environment(trades)
                 .environmentObject(StrategyRegistry.shared)
         }
+        // App menu commands are provided in AppCommands.swift
     }
 }

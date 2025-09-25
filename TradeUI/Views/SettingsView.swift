@@ -8,13 +8,29 @@ struct SettingsView: View {
     @Environment(TradeManager.self) private var trades
     
     enum TradingMode: String, CaseIterable {
-        case live = "Live"
-        case paper = "Paper"
+        // Use lowercase raw values so they match the UserDefaults strings read by InteractiveBrokers
+        case live = "live"
+        case paper = "paper"
+
+        var displayName: String {
+            switch self {
+            case .live: return "Live"
+            case .paper: return "Paper"
+            }
+        }
     }
     
     enum ConnectionType: String, CaseIterable {
-        case gateway = "Gateway"
-        case workstation = "Workstation"
+        // Lowercase raw values to match existing UserDefaults checks
+        case gateway = "gateway"
+        case workstation = "workstation"
+
+        var displayName: String {
+            switch self {
+            case .gateway: return "Gateway"
+            case .workstation: return "Workstation"
+            }
+        }
     }
     
     var body: some View {
@@ -25,7 +41,7 @@ struct SettingsView: View {
                         .font(.caption)
                     Picker("Trading Mode", selection: $tradingMode) {
                         ForEach(TradingMode.allCases, id: \.self) { mode in
-                            Text(mode.rawValue).tag(mode)
+                            Text(mode.displayName).tag(mode)
                         }
                     }
                     .pickerStyle(.segmented)
@@ -34,7 +50,7 @@ struct SettingsView: View {
                         .font(.caption)
                     Picker("Connection Type", selection: $connectionType) {
                         ForEach(ConnectionType.allCases, id: \.self) { type in
-                            Text(type.rawValue).tag(type)
+                            Text(type.displayName).tag(type)
                         }
                     }
                     .pickerStyle(.segmented)
