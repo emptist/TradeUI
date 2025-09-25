@@ -69,6 +69,12 @@ struct TradeApp: App {
             }
         }
         
+        Settings {
+            SettingsView()
+                .environment(trades)
+                .environmentObject(StrategyRegistry.shared)
+        }
+        
         #else
         WindowGroup {
             ContentView()

@@ -18,7 +18,13 @@ public class InteractiveBrokers: @unchecked Sendable, Market {
     }
     
 //    private let client = IBClient.live(id: 0, type: .gateway)
-//    let client = IBClient.paper(id: 0, type: .gateway)
+//    private var client: IBClient {
+        let tradingMode = UserDefaults.standard.string(forKey: "trading.mode") ?? "paper"
+        let connectionType = UserDefaults.standard.string(forKey: "connection.type") ?? "gateway"
+        
+        let type: IBClient.ConnectionType = connectionType == "gateway" ? .gateway : .workstation
+        return tradingMode == "live" ? IBClient.live(id: 0, type: type) : IBClient.paper(id: 0, type: type)
+    }
     
 //    let client = IBClient.paper(id: 0, type: .workstation) //.gateway)
     let client = IBClient.live(id: 0, type: .workstation) //.gateway)
