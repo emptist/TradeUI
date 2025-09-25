@@ -17,13 +17,72 @@ public class InteractiveBrokers: @unchecked Sendable, Market {
         }
     }
 
+    // Stored client that can be recreated when settings change.
+    private let clientLock = DispatchQueue(label: "InteractiveBrokers.client.sync")
+    private var _client: IBClient?
+    private var eventTask: Task<Void, Never>?
+
     var client: IBClient {
-        let tradingMode = UserDefaults.standard.string(forKey: "trading.mode") ?? "paper"
-        let connectionType = UserDefaults.standard.string(forKey: "connection.type") ?? "gateway"
+        clientLock.sync {
+            if let c = _client { return c }
+            let c = makeClient()
+            _client = c
+            startEventLoop(for: c)
+            return c
+        }
+    }
+
+    /// Create a client based on UserDefaults; comparison is case-insensitive so stored values like "Live" or "live" both work.
+    private func makeClient() -> IBClient {
+        let tradingMode = UserDefaults.standard.string(forKey: "trading.mode")?.lowercased() ?? "paper"
+        let connectionType = UserDefaults.standard.string(forKey: "connection.type")?.lowercased() ?? "gateway"
 
         let type: IBClient.ConnectionType = connectionType == "gateway" ? .gateway : .workstation
-        return tradingMode == "live"
+        let client = tradingMode == "live"
             ? IBClient.live(id: 0, type: type) : IBClient.paper(id: 0, type: type)
+
+        print("InteractiveBrokers: makeClient -> tradingMode=\(tradingMode), connectionType=\(connectionType), client=\(client)")
+        return client
+    }
+
+    private func startEventLoop(for client: IBClient) {
+        // Cancel any previous event loop attached to an old client
+        eventTask?.cancel()
+        eventTask = Task { [weak self] in
+            guard let self else { return }
+            for await anyEvent in await client.eventFeed {
+                switch anyEvent {
+                case let event as IBManagedAccounts:
+                    for accountId in event.identifiers {
+                        await self.startListening(accountId: accountId)
+                    }
+                case let event as IBAccountSummary:
+                    self.updateAccountData(event: event)
+                case let event as IBAccountUpdate:
+                    self.updateAccountData(event: event)
+                case let event as IBPosition:
+                    await self.updatePositions(event)
+                case let event as IBPositionPNL:
+                    self.updatePositions(event)
+                case let event as IBPortfolioValue:
+                    self.updatePortfolio(event)
+                case let event as OrderEvent:
+                    self.updateAccountOrders(event: event)
+                default:
+                    break
+                }
+            }
+        }
+    }
+
+    /// Force recreation of the underlying IBClient and restart its event loop. Call this after UserDefaults change.
+    public func recreateClient() {
+        clientLock.sync {
+            _client = makeClient()
+            if let c = _client {
+                startEventLoop(for: c)
+            }
+        }
     }
     private let queue = DispatchQueue(
         label: "InteractiveBrokers.syncQueue", attributes: .concurrent)

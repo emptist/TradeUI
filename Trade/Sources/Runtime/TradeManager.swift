@@ -80,6 +80,10 @@ import OrderedCollections
         Task {
             do {
                 try await Task.sleep(for: .milliseconds(200))
+                // If the market provider supports client recreation, ask it to recreate using current UserDefaults
+                if let ib = market as? InteractiveBrokers {
+                    ib.recreateClient()
+                }
                 try await market.connect()
             } catch {
                 print("initializeSockets failed with error: ", error)
