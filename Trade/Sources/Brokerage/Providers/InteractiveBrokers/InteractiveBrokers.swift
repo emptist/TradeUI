@@ -5,7 +5,7 @@ public class InteractiveBrokers: @unchecked Sendable, Market {
     private struct Asset: Hashable {
         var contract: any Contract
         var interval: TimeInterval
-        
+
         public func hash(into hasher: inout Hasher) {
             hasher.combine(contract)
             hasher.combine(interval)
@@ -13,24 +13,22 @@ public class InteractiveBrokers: @unchecked Sendable, Market {
 
         public static func == (lhs: Self, rhs: Self) -> Bool {
             return lhs.contract.hashValue == rhs.contract.hashValue
-            && lhs.interval == rhs.interval
+                && lhs.interval == rhs.interval
         }
     }
-    
-//    private let client = IBClient.live(id: 0, type: .gateway)
-//    private var client: IBClient {
+
+    var client: IBClient {
         let tradingMode = UserDefaults.standard.string(forKey: "trading.mode") ?? "paper"
         let connectionType = UserDefaults.standard.string(forKey: "connection.type") ?? "gateway"
-        
+
         let type: IBClient.ConnectionType = connectionType == "gateway" ? .gateway : .workstation
-        return tradingMode == "live" ? IBClient.live(id: 0, type: type) : IBClient.paper(id: 0, type: type)
+        return tradingMode == "live"
+            ? IBClient.live(id: 0, type: type) : IBClient.paper(id: 0, type: type)
     }
-    
-//    let client = IBClient.paper(id: 0, type: .workstation) //.gateway)
-    let client = IBClient.live(id: 0, type: .workstation) //.gateway)
-    private let queue = DispatchQueue(label: "InteractiveBrokers.syncQueue", attributes: .concurrent)
+    private let queue = DispatchQueue(
+        label: "InteractiveBrokers.syncQueue", attributes: .concurrent)
     private var _accounts: [String: Account] = [:]
-    
+
     public var accounts: [String: Account] {
         get {
             queue.sync { _accounts }
@@ -39,16 +37,17 @@ public class InteractiveBrokers: @unchecked Sendable, Market {
             queue.async(flags: .barrier) { self._accounts = newValue }
         }
     }
-    
+
     public var account: Account? {
         queue.sync {
             self.getDefaultAccount()
         }
     }
-    
+
     private var _unsubscribeMarketData: Set<Asset> = []
     private var _unsubscribeQuote: Set<IBContract> = []
-    private let unsubscribeQueue = DispatchQueue(label: "IB.unsubscribe.sync", attributes: .concurrent)
+    private let unsubscribeQueue = DispatchQueue(
+        label: "IB.unsubscribe.sync", attributes: .concurrent)
 
     private var unsubscribeMarketData: Set<Asset> {
         get { unsubscribeQueue.sync { _unsubscribeMarketData } }
@@ -59,7 +58,7 @@ public class InteractiveBrokers: @unchecked Sendable, Market {
         get { unsubscribeQueue.sync { _unsubscribeQuote } }
         set { unsubscribeQueue.async(flags: .barrier) { self._unsubscribeQuote = newValue } }
     }
-    
+
     required public init() {
         Task { [weak self] in
             guard let self else { return }
@@ -87,7 +86,7 @@ public class InteractiveBrokers: @unchecked Sendable, Market {
             }
         }
     }
-    
+
     public func connect() async throws {
         do {
             try await client.connect()
@@ -96,11 +95,11 @@ public class InteractiveBrokers: @unchecked Sendable, Market {
             throw error
         }
     }
-    
+
     public func disconnect() async throws {
         await client.disconnect()
     }
-    
+
     func contract(_ product: any Contract) -> IBContract {
         let contract: IBContract
         if product.type == IBSecuritiesType.future.rawValue {
@@ -119,19 +118,19 @@ public class InteractiveBrokers: @unchecked Sendable, Market {
         }
         return contract
     }
-    
+
     // MARK: - Market Symbol Search
-    
+
     public func search(nameOrSymbol symbol: Symbol) async throws -> [any Contract] {
         try await Product.fetchProducts(symbol: symbol, productType: [.stock])
     }
-    
+
     // MARK: Market Data
-    
+
     public func unsubscribeMarketData(contract: any Contract, interval: TimeInterval) {
         unsubscribeMarketData.insert(Asset(contract: contract, interval: interval))
     }
-    
+
     public func marketData(
         contract product: any Contract,
         interval: TimeInterval,
@@ -141,14 +140,14 @@ public class InteractiveBrokers: @unchecked Sendable, Market {
         let buffer = userInfo[MarketDataKey.bufferInfo.rawValue] as? TimeInterval ?? interval
         let barSize = IBBarSize(timeInterval: interval)
         unsubscribeMarketData.remove(Asset(contract: product, interval: interval))
-            
+
         return try historicBarPublisher(
             contract: contract,
             barSize: barSize,
             duration: DateInterval(start: Date(timeIntervalSinceNow: -buffer), end: .distantFuture)
         )
     }
-    
+
     public func marketDataSnapshot(
         contract product: any Contract,
         interval: TimeInterval,
@@ -162,15 +161,15 @@ public class InteractiveBrokers: @unchecked Sendable, Market {
             duration: DateInterval(start: startDate, end: endDate ?? Date())
         )
     }
-    
+
     public func tradingHour(_ product: any Contract) async throws -> [TradingHour] {
         let details = try await contractDetails(product)
-        
+
         // minimum price increment
         let tickSize = details.minimumTick
         // $ per tick (customize per contract)
         let tickValue = details.multiplier.flatMap(Double.init) ?? 1.0
-        
+
         return details.liquidHours?.map {
             TradingHour(
                 open: $0.open,
@@ -181,22 +180,23 @@ public class InteractiveBrokers: @unchecked Sendable, Market {
             )
         } ?? []
     }
-    
+
     private func contractDetails(_ product: any Contract) async throws -> IBContractDetails {
         let requestID = client.nextRequestID
-        let request = IBContractDetailsRequest(requestID: requestID, contract: self.contract(product))
+        let request = IBContractDetailsRequest(
+            requestID: requestID, contract: self.contract(product))
         for await event: IBContractDetails in try await client.stream(request: request) {
             return event
         }
         throw TradeError.somethingWentWrong("No contract details received")
     }
-    
+
     // MARK: Private IB Type handling
-    
+
     private func unsubscribeMarketData(_ requestID: Int) async throws {
         try await client.cancelHistoricalData(requestID)
     }
-    
+
     // publishes one time event
     private func historicBarPublisher(
         contract: IBContract,
@@ -227,7 +227,7 @@ public class InteractiveBrokers: @unchecked Sendable, Market {
                         let event = event as? IBIndexedEvent,
                         event.requestID == request.requestID
                     else { continue }
-                    
+
                     let asset = Asset(contract: contract, interval: interval)
                     if let data = self?.unsubscribeMarketData, data.contains(asset) {
                         self?.unsubscribeMarketData.remove(asset)
@@ -241,10 +241,12 @@ public class InteractiveBrokers: @unchecked Sendable, Market {
                         let bars = event.prices
                             .sorted { $0.date < $1.date }
                             .map { Bar(bar: $0, interval: interval) }
-                        continuation.yield(CandleData(symbol: symbol, interval: interval, bars: bars))
+                        continuation.yield(
+                            CandleData(symbol: symbol, interval: interval, bars: bars))
                     case let event as IBPriceBarUpdate:
                         let bar = Bar(bar: event.bar, interval: interval)
-                        continuation.yield(CandleData(symbol: symbol, interval: interval, bars: [bar]))
+                        continuation.yield(
+                            CandleData(symbol: symbol, interval: interval, bars: [bar]))
                     case let error as IBServerError:
                         print("Error: \(error.message)")
                     default:
@@ -255,17 +257,17 @@ public class InteractiveBrokers: @unchecked Sendable, Market {
             }
         }
     }
-    
+
     // MARK: Market Order
-    
+
     public func cancelAllOrders() async throws {
         try await client.cancelAllOrders()
     }
-    
+
     public func cancelOrder(orderId: Int) async throws {
         try await client.cancelOrder(orderId)
     }
-    
+
     public func makeMarketOrder(
         contract product: any Contract,
         action: OrderAction,
@@ -281,7 +283,7 @@ public class InteractiveBrokers: @unchecked Sendable, Market {
             group: group
         )
     }
-    
+
     public func makeLimitOrder(
         contract product: any Contract,
         action: OrderAction,
@@ -297,7 +299,7 @@ public class InteractiveBrokers: @unchecked Sendable, Market {
             group: group
         )
     }
-    
+
     public func makeLimitWithTrailingStopOrder(
         contract product: any Contract,
         action: OrderAction,
@@ -315,7 +317,7 @@ public class InteractiveBrokers: @unchecked Sendable, Market {
             group: group ?? UUID().uuidString
         )
     }
-    
+
     public func makeLimitWithStopOrder(
         contract product: any Contract,
         action: OrderAction,
@@ -333,11 +335,11 @@ public class InteractiveBrokers: @unchecked Sendable, Market {
             group: group ?? UUID().uuidString
         )
     }
-    
+
     private func unsubscribeQuote(_ requestID: Int) async {
         try? await client.unsubscribeMarketData(requestID)
     }
-    
+
     /// publishes live bid, ask, last snapshorts taken every 250ms of requested contract
     /// - Parameters:
     /// - contract: security description
@@ -346,7 +348,7 @@ public class InteractiveBrokers: @unchecked Sendable, Market {
         let requestID = client.nextRequestID
         let contract = self.contract(product)
         let request = IBMarketDataRequest(requestID: requestID, contract: contract)
-        return AsyncStream {[weak self] continuation in
+        return AsyncStream { [weak self] continuation in
             guard let self else {
                 continuation.finish()
                 return
@@ -378,7 +380,7 @@ extension IBContract: Contract {
     public var type: String {
         self.securitiesType.rawValue
     }
-    
+
     public var exchangeId: String {
         self.exchange?.rawValue ?? ""
     }
