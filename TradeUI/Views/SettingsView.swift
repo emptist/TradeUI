@@ -8,6 +8,8 @@ struct SettingsView: View {
     @AppStorage("connection.type") private var connectionTypeRaw: String = ConnectionType.gateway.rawValue
     @Environment(\.openURL) private var openURL
     @Environment(TradeManager.self) private var trades
+    @State private var reconnecting: Bool = false
+    @State private var reconnectTask: Task<Void, Never>? = nil
 
     // Computed bindings for Pickers using the raw storage
     private var tradingMode: Binding<TradingMode> {
@@ -105,11 +107,16 @@ struct SettingsView: View {
                             .foregroundColor(.secondary)
                     }
                     HStack {
+                        if reconnecting {
+                            ProgressView()
+                                .scaleEffect(0.75)
+                        }
                         Spacer()
-                        Button("Reconnect") {
+                        Button(reconnecting ? "Reconnecting…" : "Reconnect") {
                             updateTradingConfiguration()
                         }
                         .keyboardShortcut(",", modifiers: [.command])
+                        .disabled(reconnecting)
                     }
                 }
                 .padding(.vertical, 4)
@@ -122,9 +129,21 @@ struct SettingsView: View {
     }
     
     private func updateTradingConfiguration() {
-        // Trigger reconnection with new settings
-        Task {
+        // Debounce rapid changes and trigger reconnection with new settings
+        reconnectTask?.cancel()
+        reconnectTask = Task { [tradingModeRaw, connectionTypeRaw] in
+            // short debounce
+            try? await Task.sleep(nanoseconds: 300_000_000)
+            await MainActor.run {
+                reconnecting = true
+            }
+            // initializeSockets() will cause TradeManager to ask InteractiveBrokers to recreate the client
             trades.initializeSockets()
+            // leave the reconnect UI on briefly while the connection attempts
+            try? await Task.sleep(nanoseconds: 1_000_000_000)
+            await MainActor.run {
+                reconnecting = false
+            }
         }
     }
 }
