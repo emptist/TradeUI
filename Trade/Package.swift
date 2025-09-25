@@ -71,8 +71,7 @@ let package = Package(
             linkerSettings: [
                 .linkedFramework("CoreGraphics"),
                 .linkedFramework("Foundation"),
-                .linkedFramework("UIKit", .when(platforms: [.iOS])),
-                .linkedFramework("AppKit", .when(platforms: [.macOS])),
+                .linkedFramework("AppKit"),
             ]
         ),
         .executableTarget(

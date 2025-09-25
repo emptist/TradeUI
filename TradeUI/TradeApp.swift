@@ -1,6 +1,7 @@
 import SwiftUI
 import TradeInterface
 import Runtime
+import AppKit
 
 @main
 struct TradeApp: App {
@@ -16,7 +17,6 @@ struct TradeApp: App {
     }
     
     var body: some Scene {
-        #if os(macOS)
         MenuBarExtra {
             MenuBarContent()
                 .environment(trades)
@@ -74,16 +74,5 @@ struct TradeApp: App {
                 .environment(trades)
                 .environmentObject(StrategyRegistry.shared)
         }
-        
-        #else
-        WindowGroup {
-            ContentView()
-                .environment(trades)
-                .environmentObject(StrategyRegistry.shared)
-                .onAppear {
-                    trades.initializeSockets()
-                }
-        }
-        #endif
     }
 }

@@ -70,16 +70,12 @@ public struct FileSnapshotsView: View {
     }
     
     private func handleOpenFile(type: ViewModel.PresentedSheetType) {
-        #if os(macOS)
         switch type {
         case .snapshotPreview(let node):
             openWindow(value: ViewModel.SnapshotPreview(file: node))
         case .snapshotPlayback(let node):
             openWindow(value: ViewModel.SnapshotPlayback(file: node))
         }
-        #else
-        viewModel.isPresentingSheet = type
-        #endif
     }
 }
 

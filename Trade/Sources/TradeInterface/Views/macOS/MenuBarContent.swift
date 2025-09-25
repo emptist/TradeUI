@@ -1,7 +1,7 @@
 import SwiftUI
 import Runtime
+import AppKit
 
-#if os(macOS)
 extension String: @retroactive Identifiable {
     public var id: String { self }
 }
@@ -83,5 +83,3 @@ public struct MenuBarContent: View {
         }
     }
 }
-
-#endif
