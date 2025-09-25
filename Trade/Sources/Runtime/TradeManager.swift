@@ -80,18 +80,18 @@ import OrderedCollections
         Task {
             do {
                 try await Task.sleep(for: .milliseconds(200))
-                print("TradeManager: initializeSockets() called — will recreate client if provider supports it")
+                AppLog.info("TradeManager: initializeSockets() called — will recreate client if provider supports it")
                 // If the market provider supports client recreation, ask it to recreate using current UserDefaults
                 if let ib = market as? InteractiveBrokers {
-                    print("TradeManager: detected InteractiveBrokers — requesting recreateClient()")
+                    AppLog.info("TradeManager: detected InteractiveBrokers — requesting recreateClient()")
                     ib.recreateClient()
-                    print("TradeManager: recreateClient() returned")
+                    AppLog.info("TradeManager: recreateClient() returned")
                 }
-                print("TradeManager: calling market.connect()")
+                AppLog.info("TradeManager: calling market.connect()")
                 try await market.connect()
-                print("TradeManager: market.connect() returned successfully")
+                AppLog.info("TradeManager: market.connect() returned successfully")
             } catch {
-                print("initializeSockets failed with error: ", error)
+                AppLog.error("initializeSockets failed with error: \(error)")
             }
         }
     }

@@ -41,7 +41,7 @@ public class InteractiveBrokers: @unchecked Sendable, Market {
         let client = tradingMode == "live"
             ? IBClient.live(id: 0, type: type) : IBClient.paper(id: 0, type: type)
 
-        print("InteractiveBrokers: makeClient -> tradingMode=\(tradingMode), connectionType=\(connectionType), client=\(client)")
+        AppLog.debug("InteractiveBrokers: makeClient -> tradingMode=\(tradingMode), connectionType=\(connectionType), client=\(client)")
         return client
     }
 
@@ -78,11 +78,11 @@ public class InteractiveBrokers: @unchecked Sendable, Market {
     /// Force recreation of the underlying IBClient and restart its event loop. Call this after UserDefaults change.
     public func recreateClient() {
         clientLock.sync {
-            print("InteractiveBrokers: recreateClient() — recreating IBClient from UserDefaults")
+            AppLog.info("InteractiveBrokers: recreateClient() — recreating IBClient from UserDefaults")
             _client = makeClient()
             if let c = _client {
                 startEventLoop(for: c)
-                print("InteractiveBrokers: recreateClient() — started event loop for new client: \(c)")
+                AppLog.info("InteractiveBrokers: recreateClient() — started event loop for new client: \(c)")
             }
         }
     }
@@ -150,19 +150,19 @@ public class InteractiveBrokers: @unchecked Sendable, Market {
 
     public func connect() async throws {
         do {
-            print("InteractiveBrokers: connect() — delegating to client.connect()")
+            AppLog.info("InteractiveBrokers: connect() — delegating to client.connect()")
             try await client.connect()
-            print("InteractiveBrokers: connect() succeeded")
+            AppLog.info("InteractiveBrokers: connect() succeeded")
         } catch {
-            print("🔴 failed to connect to Interactive Brokers:", error)
+            AppLog.error("failed to connect to Interactive Brokers: \(error)")
             throw error
         }
     }
 
     public func disconnect() async throws {
-        print("InteractiveBrokers: disconnect() — delegating to client.disconnect()")
+        AppLog.info("InteractiveBrokers: disconnect() — delegating to client.disconnect()")
         await client.disconnect()
-        print("InteractiveBrokers: disconnect() returned")
+        AppLog.info("InteractiveBrokers: disconnect() returned")
     }
 
     func contract(_ product: any Contract) -> IBContract {
@@ -313,7 +313,7 @@ public class InteractiveBrokers: @unchecked Sendable, Market {
                         continuation.yield(
                             CandleData(symbol: symbol, interval: interval, bars: [bar]))
                     case let error as IBServerError:
-                        print("Error: \(error.message)")
+                        AppLog.error("IBServerError: \(error.message)")
                     default:
                         continue
                     }

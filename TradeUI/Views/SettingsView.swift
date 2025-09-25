@@ -10,6 +10,7 @@ struct SettingsView: View {
     @Environment(TradeManager.self) private var trades
     @State private var reconnecting: Bool = false
     @State private var reconnectTask: Task<Void, Never>? = nil
+    @AppStorage("logging.enabled") private var loggingEnabled: Bool = false
 
     // Computed bindings for Pickers using the raw storage
     private var tradingMode: Binding<TradingMode> {
@@ -117,6 +118,22 @@ struct SettingsView: View {
                         }
                         .keyboardShortcut(",", modifiers: [.command])
                         .disabled(reconnecting)
+                    }
+                    Toggle(isOn: Binding(get: { loggingEnabled }, set: { v in
+                        loggingEnabled = v
+                        AppLog.enabled = v
+                    })) {
+                        Text("Enable file logging")
+                    }
+                    .help("Enable writing debug logs to ~/Library/Application Support/Trade With It/Logs/app.log")
+
+                    if let url = AppLog.logFileURLPublic {
+                        HStack {
+                            Spacer()
+                            Button("Open Log File") {
+                                NSWorkspace.shared.activateFileViewerSelecting([url])
+                            }
+                        }
                     }
                 }
                 .padding(.vertical, 4)
