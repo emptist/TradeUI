@@ -90,6 +90,30 @@ struct SettingsView: View {
                 }
                 .padding(.vertical, 4)
             }
+            GroupBox(label: Text("Debug / Controls")) {
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack {
+                        Text("Stored trading.mode:")
+                        Spacer()
+                        Text(tradingModeRaw)
+                            .foregroundColor(.secondary)
+                    }
+                    HStack {
+                        Text("Stored connection.type:")
+                        Spacer()
+                        Text(connectionTypeRaw)
+                            .foregroundColor(.secondary)
+                    }
+                    HStack {
+                        Spacer()
+                        Button("Reconnect") {
+                            updateTradingConfiguration()
+                        }
+                        .keyboardShortcut(",", modifiers: [.command])
+                    }
+                }
+                .padding(.vertical, 4)
+            }
             Spacer()
         }
         .padding()
