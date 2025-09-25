@@ -1,5 +1,5 @@
 {
-  "originHash" : "4e899ec592c958ed2341e954836dcbf65c9f989466e9e94b16eae2bb61eb1554",
+  "originHash" : "bbd3635ebb98d3906afb88057ce78eee4adf9c55ef225f1315a3717ce6629d12",
   "pins" : [
     {
       "identity" : "forexfactory",
@@ -15,14 +15,14 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/TradeWithIt/IBKit",
       "state" : {
-        "branch" : "Swift-6-preparation",
-        "revision" : "daf8a7f72ff575f66248a53a97a4ff1a02bfd125"
+        "branch" : "main",
+        "revision" : "fc330c463ae50b7a93bfc4d2d63a78f094560473"
       }
     },
     {
       "identity" : "strategy",
       "kind" : "remoteSourceControl",
-      "location" : "https://github.com/TradeWithIt/Strategy.git",
+      "location" : "https://github.com/emptist/Strategy.git",
       "state" : {
         "branch" : "master",
         "revision" : "d9732114f545bc98ac181465e7deee0107458d2a"
