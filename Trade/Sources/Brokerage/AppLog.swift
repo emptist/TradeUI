@@ -2,7 +2,9 @@ import Foundation
 import os
 
 public enum LogLevel: Int, CustomStringConvertible {
-    case debug = 0, info = 1, error = 2
+    case debug = 0
+    case info = 1
+    case error = 2
     public var description: String {
         switch self {
         case .debug: return "DEBUG"
@@ -14,49 +16,49 @@ public enum LogLevel: Int, CustomStringConvertible {
 
 /// Simple application logger that writes to unified logging (os.Logger)
 /// and optionally appends to a rotating file in Application Support.
-public final class AppLog {
+public actor AppLog {
     public static let shared = AppLog()
 
     // Toggle file logging; default is false for privacy.
-    public static var enabled: Bool {
-        get { shared.enabledInternal }
-        set { shared.setEnabled(newValue) }
+    nonisolated public static func setEnabled(_ v: Bool) {
+        Task { await shared.setEnabled(v) }
+    }
+
+    nonisolated public static func isEnabled() async -> Bool {
+        await shared.enabledInternal
     }
 
     private let logger: Logger
-    private let fileQueue = DispatchQueue(label: "com.tradeui.applog.file")
     private var logFileURL: URL?
     private var enabledInternal: Bool = false
 
-    private init() {
+    public init() {
         let subsystem = Bundle.main.bundleIdentifier ?? ProcessInfo.processInfo.processName
         logger = Logger(subsystem: subsystem, category: "TradeUI")
 
-        if let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first {
+        if let appSupport = FileManager.default.urls(
+            for: .applicationSupportDirectory, in: .userDomainMask
+        ).first {
             let dir = appSupport.appendingPathComponent("Trade With It/Logs", isDirectory: true)
             try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
             logFileURL = dir.appendingPathComponent("app.log")
         }
     }
 
-    public static func setEnabled(_ enabled: Bool) {
-        AppLog.enabled = enabled
+    nonisolated public static func debug(_ message: String) {
+        Task { await shared.log(.debug, message) }
+    }
+
+    nonisolated public static func info(_ message: String) {
+        Task { await shared.log(.info, message) }
+    }
+
+    nonisolated public static func error(_ message: String) {
+        Task { await shared.log(.error, message) }
     }
 
     private func setEnabled(_ v: Bool) {
-        fileQueue.sync { enabledInternal = v }
-    }
-
-    public static func debug(_ message: String) {
-        shared.log(.debug, message)
-    }
-
-    public static func info(_ message: String) {
-        shared.log(.info, message)
-    }
-
-    public static func error(_ message: String) {
-        shared.log(.error, message)
+        enabledInternal = v
     }
 
     private func log(_ level: LogLevel, _ message: String) {
@@ -71,24 +73,22 @@ public final class AppLog {
         let ts = ISO8601DateFormatter().string(from: Date())
         let line = "[\(ts)] [\(level)] \(message)\n"
 
-        fileQueue.async { [url] in
-            if let data = line.data(using: .utf8) {
-                if !FileManager.default.fileExists(atPath: url.path) {
-                    FileManager.default.createFile(atPath: url.path, contents: data, attributes: nil)
-                } else if let fh = try? FileHandle(forWritingTo: url) {
-                    defer { try? fh.close() }
-                    try? fh.seekToEnd()
-                    try? fh.write(contentsOf: data)
-                }
-                try? self.rotateIfNeeded(url: url)
+        if let data = line.data(using: .utf8) {
+            if !FileManager.default.fileExists(atPath: url.path) {
+                FileManager.default.createFile(atPath: url.path, contents: data, attributes: nil)
+            } else if let fh = try? FileHandle(forWritingTo: url) {
+                defer { try? fh.close() }
+                try? fh.seekToEnd()
+                try? fh.write(contentsOf: data)
             }
+            try? rotateIfNeeded(url: url)
         }
     }
 
     private func rotateIfNeeded(url: URL) throws {
         let attrs = try FileManager.default.attributesOfItem(atPath: url.path)
         guard let size = attrs[.size] as? UInt64 else { return }
-        let maxSize: UInt64 = 5_000_000 // 5 MB
+        let maxSize: UInt64 = 5_000_000  // 5 MB
         guard size > maxSize else { return }
 
         // Rotate: app.log -> app.log.1, .1 -> .2, keep 3 backups
@@ -106,5 +106,12 @@ public final class AppLog {
     }
 
     /// Expose the log file path for UI actions (optional)
-    public static var logFileURLPublic: URL? { shared.logFileURL }
+    nonisolated public static var logFileURLPublic: URL? {
+        if let appSupport = FileManager.default.urls(
+            for: .applicationSupportDirectory, in: .userDomainMask
+        ).first {
+            return appSupport.appendingPathComponent("Trade With It/Logs/app.log")
+        }
+        return nil
+    }
 }

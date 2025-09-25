@@ -1,11 +1,12 @@
-import SwiftUI
-import Runtime
 import Brokerage
+import Runtime
+import SwiftUI
 
 struct SettingsView: View {
     // Store raw string values in UserDefaults to match what InteractiveBrokers expects
     @AppStorage("trading.mode") private var tradingModeRaw: String = TradingMode.paper.rawValue
-    @AppStorage("connection.type") private var connectionTypeRaw: String = ConnectionType.gateway.rawValue
+    @AppStorage("connection.type") private var connectionTypeRaw: String = ConnectionType.gateway
+        .rawValue
     @Environment(\.openURL) private var openURL
     @Environment(TradeManager.self) private var trades
     @State private var reconnecting: Bool = false
@@ -32,7 +33,7 @@ struct SettingsView: View {
             }
         )
     }
-    
+
     enum TradingMode: String, CaseIterable {
         // Use lowercase raw values so they match the UserDefaults strings read by InteractiveBrokers
         case live = "live"
@@ -45,7 +46,7 @@ struct SettingsView: View {
             }
         }
     }
-    
+
     enum ConnectionType: String, CaseIterable {
         // Lowercase raw values to match existing UserDefaults checks
         case gateway = "gateway"
@@ -58,7 +59,7 @@ struct SettingsView: View {
             }
         }
     }
-    
+
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             GroupBox(label: Text("Trading Environment")) {
@@ -119,13 +120,19 @@ struct SettingsView: View {
                         .keyboardShortcut(",", modifiers: [.command])
                         .disabled(reconnecting)
                     }
-                    Toggle(isOn: Binding(get: { loggingEnabled }, set: { v in
-                        loggingEnabled = v
-                        AppLog.enabled = v
-                    })) {
+                    Toggle(
+                        isOn: Binding(
+                            get: { loggingEnabled },
+                            set: { v in
+                                loggingEnabled = v
+                                AppLog.setEnabled(v)
+                            })
+                    ) {
                         Text("Enable file logging")
                     }
-                    .help("Enable writing debug logs to ~/Library/Application Support/Trade With It/Logs/app.log")
+                    .help(
+                        "Enable writing debug logs to ~/Library/Application Support/Trade With It/Logs/app.log"
+                    )
 
                     if let url = AppLog.logFileURLPublic {
                         HStack {
@@ -144,7 +151,7 @@ struct SettingsView: View {
         .frame(minWidth: 300, minHeight: 200)
         // Pickers update via computed bindings which call updateTradingConfiguration()
     }
-    
+
     private func updateTradingConfiguration() {
         // Debounce rapid changes and trigger reconnection with new settings
         reconnectTask?.cancel()
