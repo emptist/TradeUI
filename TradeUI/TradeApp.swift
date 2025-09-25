@@ -71,7 +71,7 @@ struct TradeApp: App {
             }
         }
 
-        WindowGroup("Settings", id: "settings") {
+        Settings {
             SettingsView()
                 .environment(trades)
                 .environmentObject(StrategyRegistry.shared)
