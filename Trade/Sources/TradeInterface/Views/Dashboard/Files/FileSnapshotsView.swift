@@ -3,10 +3,9 @@ import Brokerage
 import Runtime
 
 public struct FileSnapshotsView: View {
-    #if os(macOS)
+//    #if os(macOS)
     @Environment(\.openWindow) private var openWindow
-    #endif
-    
+//    #endif    
     @Environment(TradeManager.self) private var trades
     @State private var viewModel = ViewModel()
     @State private var selectedFile: FileNode?
@@ -70,16 +69,16 @@ public struct FileSnapshotsView: View {
     }
     
     private func handleOpenFile(type: ViewModel.PresentedSheetType) {
-        #if os(macOS)
+//        #if os(macOS)
         switch type {
         case .snapshotPreview(let node):
             openWindow(value: ViewModel.SnapshotPreview(file: node))
         case .snapshotPlayback(let node):
             openWindow(value: ViewModel.SnapshotPlayback(file: node))
         }
-        #else
-        viewModel.isPresentingSheet = type
-        #endif
+//        #else
+//        viewModel.isPresentingSheet = type
+//        #endif
     }
 }
 

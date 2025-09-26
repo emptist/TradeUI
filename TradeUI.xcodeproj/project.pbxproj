@@ -12,6 +12,7 @@
 		365ADED52BF388E4003403B3 /* LICENSE.md in Resources */ = {isa = PBXBuildFile; fileRef = 365ADED32BF388E4003403B3 /* LICENSE.md */; };
 		365ADED62BF388E4003403B3 /* README.md in Resources */ = {isa = PBXBuildFile; fileRef = 365ADED42BF388E4003403B3 /* README.md */; };
 		368BFD172DC846D0008527EA /* Run-Strategy-With-TradeUI-and-IB.md in Resources */ = {isa = PBXBuildFile; fileRef = 368BFD162DC846C9008527EA /* Run-Strategy-With-TradeUI-and-IB.md */; };
+		4886021A2E86A0B10066FBA4 /* AppCommands.swift in Sources */ = {isa = PBXBuildFile; fileRef = 488602192E86A0B10066FBA4 /* AppCommands.swift */; };
 		48AC7C892E8616760039EE87 /* TradingStrategy in Frameworks */ = {isa = PBXBuildFile; productRef = 48AC7C882E8616760039EE87 /* TradingStrategy */; };
 		AD6F73B42B67A6080012F5F8 /* TradeApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD6F73B32B67A6080012F5F8 /* TradeApp.swift */; };
 		AD6F73B82B67A60B0012F5F8 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = AD6F73B72B67A60B0012F5F8 /* Assets.xcassets */; };
@@ -36,6 +37,7 @@
 		365ADED32BF388E4003403B3 /* LICENSE.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = LICENSE.md; sourceTree = "<group>"; };
 		365ADED42BF388E4003403B3 /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		368BFD162DC846C9008527EA /* Run-Strategy-With-TradeUI-and-IB.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "Run-Strategy-With-TradeUI-and-IB.md"; sourceTree = "<group>"; };
+		488602192E86A0B10066FBA4 /* AppCommands.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppCommands.swift; sourceTree = "<group>"; };
 		AD1614732B6F5CC300EF68B5 /* TradeUI.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = TradeUI.entitlements; sourceTree = "<group>"; };
 		AD6F73B02B67A6080012F5F8 /* Trade With It.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Trade With It.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		AD6F73B32B67A6080012F5F8 /* TradeApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TradeApp.swift; sourceTree = "<group>"; };
@@ -70,6 +72,14 @@
 			name = Frameworks;
 			sourceTree = "<group>";
 		};
+		488602182E86A0980066FBA4 /* Commands */ = {
+			isa = PBXGroup;
+			children = (
+				488602192E86A0B10066FBA4 /* AppCommands.swift */,
+			);
+			path = Commands;
+			sourceTree = "<group>";
+		};
 		AD6F73A72B67A6080012F5F8 = {
 			isa = PBXGroup;
 			children = (
@@ -94,6 +104,7 @@
 		AD6F73B22B67A6080012F5F8 /* TradeUI */ = {
 			isa = PBXGroup;
 			children = (
+				488602182E86A0980066FBA4 /* Commands */,
 				365ADED12BF388B2003403B3 /* Preview Content */,
 				AD1614732B6F5CC300EF68B5 /* TradeUI.entitlements */,
 				AD6F73B32B67A6080012F5F8 /* TradeApp.swift */,
@@ -185,6 +196,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				AD6F73B42B67A6080012F5F8 /* TradeApp.swift in Sources */,
+				4886021A2E86A0B10066FBA4 /* AppCommands.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
