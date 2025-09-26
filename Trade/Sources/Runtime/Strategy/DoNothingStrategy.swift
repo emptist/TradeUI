@@ -13,7 +13,7 @@ public struct DoNothingStrategy: Strategy {
     public let indicators: [[String: [Double]]]
     public let resolution: [Scale]
     
-    public init(candles: [Klines]) {
+    public init(candles: [any Klines]) {
         let interval = candles.first?.interval ?? 60
         let totalTradingSeconds = 8 * 3600.0
         let candleCount = Int(totalTradingSeconds / interval)
