@@ -10,7 +10,7 @@ import Brokerage
 import Runtime
 import SwiftUI
 
-struct SettingsView: View {
+public struct SettingsView: View {
     // Store raw string values in UserDefaults to match what InteractiveBrokers expects
     @AppStorage("trading.mode") private var tradingModeRaw: String = TradingMode.paper.rawValue
     @AppStorage("connection.type") private var connectionTypeRaw: String = ConnectionType.gateway
@@ -68,8 +68,12 @@ struct SettingsView: View {
             }
         }
     }
+    
+    
+    public init() {}
+    
 
-    var body: some View {
+    public var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             GroupBox(label: Text("Trading Environment")) {
                 VStack(alignment: .leading, spacing: 8) {
