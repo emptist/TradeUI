@@ -238,7 +238,7 @@ public struct SettingsView: View {
                             ) {}
                         }
                         .help(
-                            "Enable writing debug logs to ~/Library/Application Support/Swift&Smart/Logs/app.log"
+                            "Enable writing debug logs to ~/Library/Application Support/TradeSmart/Logs/app.log"
                         )
                         
                         settingRow(title: "Log Level") {
