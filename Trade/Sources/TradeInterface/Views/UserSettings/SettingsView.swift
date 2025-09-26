@@ -10,6 +10,60 @@ import Brokerage
 import Runtime
 import SwiftUI
 
+// Move enums outside of the struct to ensure they're available during property initialization
+
+// Settings sections for sidebar navigation
+enum SettingsSection: Hashable, CaseIterable, Identifiable {
+    case general
+    case debug
+    case status
+    
+    // Required for Identifiable conformance
+    var id: Self { self }
+    
+    var title: String {
+        switch self {
+        case .general: return "General"
+        case .debug: return "Debug"
+        case .status: return "Status"
+        }
+    }
+    
+    var iconName: String {
+        switch self {
+        case .general: return "gearshape"
+        case .debug: return "info.circle"
+        case .status: return "network"
+        }
+    }
+}
+
+enum TradingMode: String, CaseIterable {
+    // Use lowercase raw values so they match the UserDefaults strings read by InteractiveBrokers
+    case live = "live"
+    case paper = "paper"
+
+    var displayName: String {
+        switch self {
+        case .live: return "Live"
+        case .paper: return "Paper"
+        }
+    }
+}
+
+enum ConnectionType: String, CaseIterable {
+    // Lowercase raw values to match existing UserDefaults checks
+    case gateway = "gateway"
+    case workstation = "workstation"
+
+    var displayName: String {
+        switch self {
+        case .gateway: return "Gateway"
+        case .workstation: return "Workstation"
+        }
+    }
+}
+
 public struct SettingsView: View {
     // Store raw string values in UserDefaults to match what InteractiveBrokers expects
     @AppStorage("trading.mode") private var tradingModeRaw: String = TradingMode.paper.rawValue
@@ -43,58 +97,6 @@ public struct SettingsView: View {
                 updateTradingConfiguration()
             }
         )
-    }
-
-    // Settings sections for sidebar navigation
-      enum SettingsSection: Hashable, CaseIterable, Identifiable {
-         case general
-         case debug
-         case status
-         
-         // Required for Identifiable conformance
-         var id: Self { self }
-         
-         var title: String {
-             switch self {
-             case .general: return "General"
-             case .debug: return "Debug"
-             case .status: return "Status"
-             }
-         }
-         
-         var iconName: String {
-             switch self {
-             case .general: return "gearshape"
-             case .debug: return "info.circle"
-             case .status: return "network"
-             }
-         }
-     }
-
-    enum TradingMode: String, CaseIterable {
-        // Use lowercase raw values so they match the UserDefaults strings read by InteractiveBrokers
-        case live = "live"
-        case paper = "paper"
-
-        var displayName: String {
-            switch self {
-            case .live: return "Live"
-            case .paper: return "Paper"
-            }
-        }
-    }
-
-    enum ConnectionType: String, CaseIterable {
-        // Lowercase raw values to match existing UserDefaults checks
-        case gateway = "gateway"
-        case workstation = "workstation"
-
-        var displayName: String {
-            switch self {
-            case .gateway: return "Gateway"
-            case .workstation: return "Workstation"
-            }
-        }
     }
     
     
@@ -236,7 +238,7 @@ public struct SettingsView: View {
                             ) {}
                         }
                         .help(
-                            "Enable writing debug logs to ~/Library/Application Support/Trade With It/Logs/app.log"
+                            "Enable writing debug logs to ~/Library/Application Support/Swift&Smart/Logs/app.log"
                         )
                         
                         settingRow(title: "Log Level") {

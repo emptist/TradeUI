@@ -38,7 +38,7 @@
 		368BFD162DC846C9008527EA /* Run-Strategy-With-TradeUI-and-IB.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "Run-Strategy-With-TradeUI-and-IB.md"; sourceTree = "<group>"; };
 		488602192E86A0B10066FBA4 /* AppCommands.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppCommands.swift; sourceTree = "<group>"; };
 		AD1614732B6F5CC300EF68B5 /* TradeUI.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = TradeUI.entitlements; sourceTree = "<group>"; };
-		AD6F73B02B67A6080012F5F8 /* Trade With It.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Trade With It.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		AD6F73B02B67A6080012F5F8 /* Swift&Smart.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Swift&Smart.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		AD6F73B32B67A6080012F5F8 /* TradeApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TradeApp.swift; sourceTree = "<group>"; };
 		AD6F73B72B67A60B0012F5F8 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -94,7 +94,7 @@
 		AD6F73B12B67A6080012F5F8 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				AD6F73B02B67A6080012F5F8 /* Trade With It.app */,
+				AD6F73B02B67A6080012F5F8 /* Swift&Smart.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -132,7 +132,7 @@
 				365ADECE2BF3871A003403B3 /* TradeInterface */,
 			);
 			productName = TradeWithIt;
-			productReference = AD6F73B02B67A6080012F5F8 /* Trade With It.app */;
+			productReference = AD6F73B02B67A6080012F5F8 /* Swift&Smart.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -353,7 +353,7 @@
 				MACOSX_DEPLOYMENT_TARGET = 15.0;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.szymonlorenz.TradeUI;
-				PRODUCT_NAME = "Trade With It";
+				PRODUCT_NAME = "Swift&Smart";
 				SDKROOT = auto;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx";
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -395,7 +395,7 @@
 				MACOSX_DEPLOYMENT_TARGET = 15.0;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.szymonlorenz.TradeUI;
-				PRODUCT_NAME = "Trade With It";
+				PRODUCT_NAME = "Swift&Smart";
 				SDKROOT = auto;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx";
 				SWIFT_EMIT_LOC_STRINGS = YES;

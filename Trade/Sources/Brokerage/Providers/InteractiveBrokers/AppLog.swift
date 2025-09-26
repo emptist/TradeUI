@@ -76,7 +76,7 @@ public actor AppLog {
         if let appSupport = FileManager.default.urls(
             for: .applicationSupportDirectory, in: .userDomainMask
         ).first {
-            let dir = appSupport.appendingPathComponent("Trade With It/Logs", isDirectory: true)
+            let dir = appSupport.appendingPathComponent("Swift&Smart/Logs", isDirectory: true)
             try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
             logFileURL = dir.appendingPathComponent("app.log")
         }
@@ -150,7 +150,7 @@ public actor AppLog {
         if let appSupport = FileManager.default.urls(
             for: .applicationSupportDirectory, in: .userDomainMask
         ).first {
-            return appSupport.appendingPathComponent("Trade With It/Logs/app.log")
+            return appSupport.appendingPathComponent("Swift&Smart/Logs/app.log")
         }
         return nil
     }
