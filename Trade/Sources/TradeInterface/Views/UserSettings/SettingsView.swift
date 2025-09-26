@@ -151,7 +151,7 @@ public struct SettingsView: View {
                         Divider()
                         
                         settingRow(title: "Trading Mode") {
-                            Picker("Trading Mode", selection: tradingMode) {
+                            Picker("", selection: tradingMode) {
                                 ForEach(TradingMode.allCases, id: \.self) { mode in
                                     Text(mode.displayName).tag(mode)
                                 }
@@ -160,7 +160,7 @@ public struct SettingsView: View {
                         }
                         
                         settingRow(title: "Connection Type") {
-                            Picker("Connection Type", selection: connectionType) {
+                            Picker("", selection: connectionType) {
                                 ForEach(ConnectionType.allCases, id: \.self) { type in
                                     Text(type.displayName).tag(type)
                                 }
@@ -242,7 +242,7 @@ public struct SettingsView: View {
                         )
                         
                         settingRow(title: "Log Level") {
-                            Picker("Log level", selection: Binding(
+                            Picker("", selection: Binding(
                                 get: { loggingLevelRaw },
                                 set: { newValue in
                                     loggingLevelRaw = newValue
