@@ -3,7 +3,7 @@ import ArgumentParser
 @main
 struct TradeWithIt: ParsableCommand {
     static let configuration = CommandConfiguration(
-        commandName: "TradeWithIt",
+        commandName: "TradeSmart", //"TradeWithIt",
         abstract: "A command-line interface for executing trading strategies.",
         subcommands: [Help.self, Trade.self],
         defaultSubcommand: Help.self
