@@ -1,47 +1,51 @@
-import Foundation
 import Brokerage
-import Persistence
+import Foundation
 import NIOConcurrencyHelpers
-import TradingStrategy
 import OrderedCollections
+import Persistence
+import TradingStrategy
 
 @Observable public class TradeManager: @unchecked Sendable {
     private let lock: NIOLock = NIOLock()
-    
+
     public let market: Market
     public let persistance: Persistence
     public let fileProvider: MarketDataFileProvider
     public let tradeAlertHandler: TradeAlertHandling?
     public private(set) var watchers: [String: Watcher] = [:]
-    
+
     public var selectedWatcher: String?
     private var isLookingUpSuggestions: Bool = false
     private var annoucments: [Annoucment] = []
-    
-    
+    // Last connection metadata for UI/diagnostics
+    public private(set) var lastConnectTime: Date?
+    public private(set) var lastConnectStatus: String?
+
     public var watcher: Watcher? {
         guard let id = selectedWatcher else { return nil }
         return lock.withLock {
             return watchers[id]
         }
     }
-    
+
     public func removeAllWatchers() {
         lock.withLock {
             watchers.removeAll()
         }
     }
-    
+
     public func removeWatcher(_ id: String) {
         lock.withLock {
             watchers[id] = nil
         }
     }
-    
+
     public func watchersGroups() -> OrderedDictionary<TradeAggregator, [Watcher]> {
         return lock.withLock {
-            var groupedWatchers: OrderedDictionary<TradeAggregator, [Watcher]> = OrderedDictionary(grouping: watchers.values) { $0.tradeAggregator }
-            
+            var groupedWatchers: OrderedDictionary<TradeAggregator, [Watcher]> = OrderedDictionary(
+                grouping: watchers.values
+            ) { $0.tradeAggregator }
+
             for (aggregator, watchers) in groupedWatchers {
                 groupedWatchers[aggregator] = watchers.sorted { lhs, rhs in
                     if lhs.contract.type != rhs.contract.type {
@@ -56,14 +60,14 @@ import OrderedCollections
                     return lhs.interval < rhs.interval
                 }
             }
-            
+
             let sortedGroupedWatchers = OrderedDictionary(
                 uniqueKeysWithValues: groupedWatchers.sorted(by: { $0.key.id < $1.key.id })
             )
             return sortedGroupedWatchers
         }
     }
-    
+
     public init(
         market: Market = InteractiveBrokers(),
         persistance: Persistence = PersistenceManager(),
@@ -75,20 +79,45 @@ import OrderedCollections
         self.fileProvider = fileProvider
         self.tradeAlertHandler = tradeAlertHandler
     }
-    
+
     public func initializeSockets() {
         Task {
             do {
                 try await Task.sleep(for: .milliseconds(200))
+                AppLog.info(
+                    "TradeManager: initializeSockets() called — will recreate client if provider supports it"
+                )
+                // If the market provider supports client recreation, ask it to recreate using current UserDefaults
+                if let ib = market as? InteractiveBrokers {
+                    AppLog.info(
+                        "TradeManager: detected InteractiveBrokers — requesting recreateClient()")
+                    ib.recreateClient()
+                    AppLog.info("TradeManager: recreateClient() returned")
+                }
+                // Update status: attempting to connect
+                await MainActor.run {
+                    self.lastConnectStatus = "Connecting…"
+                    self.lastConnectTime = Date()
+                }
+                AppLog.info("TradeManager: calling market.connect()")
                 try await market.connect()
+                AppLog.info("TradeManager: market.connect() returned successfully")
+                await MainActor.run {
+                    self.lastConnectStatus = "Connected"
+                    self.lastConnectTime = Date()
+                }
             } catch {
-                print("initializeSockets failed with error: ", error)
+                AppLog.error("initializeSockets failed with error: \(error)")
+                await MainActor.run {
+                    self.lastConnectStatus = "Failed: \(error.localizedDescription)"
+                    self.lastConnectTime = Date()
+                }
             }
         }
     }
-    
+
     // MARK: - Market Data
-    
+
     public func cancelMarketData(_ asset: Asset) async throws {
         try await market.unsubscribeMarketData(contract: asset.instrument, interval: asset.interval)
         let id = asset.id
@@ -98,7 +127,7 @@ import OrderedCollections
             }
         }
     }
-    
+
     @MainActor
     public func marketData<T: Strategy>(
         contract: any Contract,
@@ -108,7 +137,9 @@ import OrderedCollections
         let assetId = "\(strategyType.id)\(contract.label):\(interval)"
         try lock.withLockVoid {
             guard watchers[assetId] == nil else {
-                print("🔴 Watcher already exist for strategy: \(strategyType.name), strategy type:", String(describing: strategyType))
+                print(
+                    "🔴 Watcher already exist for strategy: \(strategyType.name), strategy type:",
+                    String(describing: strategyType))
                 return
             }
             let agregator = TradeAggregator(
@@ -139,21 +170,22 @@ import OrderedCollections
             watchers[assetId] = watcher
         }
     }
-    
+
     public func updateAnnoucments(_ annoucments: [Annoucment]) {
         self.annoucments = annoucments
     }
-    
-    private func nextAnnoucment(after time: TimeInterval = Date().timeIntervalSince1970, in annoucments: [Annoucment]) -> Annoucment? {
+
+    private func nextAnnoucment(
+        after time: TimeInterval = Date().timeIntervalSince1970, in annoucments: [Annoucment]
+    ) -> Annoucment? {
         annoucments
             .filter { $0.timestamp > time }
             .sorted { $0.timestamp < $1.timestamp }
             .first
     }
 
-    
     // MARK: Load Dylibs Files and its Strategies
-    
+
     func loadAvailableStrategies(from path: String) -> [String] {
         let handle = dlopen(path, RTLD_NOW)
         guard handle != nil else {
@@ -185,7 +217,9 @@ import OrderedCollections
         }
 
         guard let symbol = dlsym(handle, "createStrategy") else {
-            print("❌ Failed to find `createStrategy` symbol in \(path): \(String(cString: dlerror()!))")
+            print(
+                "❌ Failed to find `createStrategy` symbol in \(path): \(String(cString: dlerror()!))"
+            )
             return nil
         }
 
@@ -196,29 +230,33 @@ import OrderedCollections
             return nil
         }
 
-        let factoryBox = Unmanaged<Box<() -> Strategy>>.fromOpaque(strategyPointer).takeRetainedValue()
+        let factoryBox = Unmanaged<Box<() -> Strategy>>.fromOpaque(strategyPointer)
+            .takeRetainedValue()
         let strategyInstance = factoryBox.value()
         let strategyType = type(of: strategyInstance)
         return strategyType
     }
 
     @MainActor
-    public func loadAllUserStrategies(into registry: StrategyRegistry, location strategyFolder: String) {
+    public func loadAllUserStrategies(
+        into registry: StrategyRegistry, location strategyFolder: String
+    ) {
         let fileManager = FileManager.default
         guard let files = try? fileManager.contentsOfDirectory(atPath: strategyFolder) else {
             return
         }
 
-#if os(Linux)
-        let extensionSuffix = ".so"
-#else
-        let extensionSuffix = ".dylib"
-#endif
-        
+        #if os(Linux)
+            let extensionSuffix = ".so"
+        #else
+            let extensionSuffix = ".dylib"
+        #endif
+
         for file in files where file.hasSuffix(extensionSuffix) {
             let url = URL(fileURLWithPath: strategyFolder).appendingPathComponent(file)
             loadStrategy(into: registry, location: url.path())
         }
+        // Only register DoNothingStrategy as it's the only strategy that actually exists in the codebase
         registry.register(strategyType: DoNothingStrategy.self)
 //        registry.register(strategyType: FollowMovingAverageStrategy.self)
 //        registry.register(strategyType: SurpriseBarStrategy.self)
@@ -234,7 +272,7 @@ import OrderedCollections
 //        registry.register(strategyType: ORBStrategy.self)
 //        registry.register(strategyType: ThreeCandleVolumeStrategy.self)
     }
-    
+
     @MainActor
     public func loadStrategy(into registry: StrategyRegistry, location fullPath: String) {
         let strategyNames = loadAvailableStrategies(from: fullPath)
@@ -248,9 +286,9 @@ import OrderedCollections
             }
         }
     }
-    
+
     // MARK: Types
-    
+
     private final class Box<T> {
         let value: T
         init(_ value: T) { self.value = value }
