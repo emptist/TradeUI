@@ -5,7 +5,7 @@ import TradingStrategy
 import SwiftUIComponents
 
 public struct SnapshotView: View {
-    @AppStorage("selected.strategy.id") private var selectedStrategyId: String = DoNothingStrategy.id
+    @AppStorage("selected.strategy.id") private var selectedStrategyId: String = TradingStrategy.DoNothingStrategy.id
     @Environment(\.dismiss) private var dismiss
     @Environment(\.presentationMode) var presentationMode
     @EnvironmentObject var strategyRegistry: StrategyRegistry

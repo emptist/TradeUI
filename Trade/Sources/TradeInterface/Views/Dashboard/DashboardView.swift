@@ -139,7 +139,8 @@ struct DashboardView: View {
             let instruments = [Instrument.NQ, Instrument.ES, Instrument.RTY]
             await MainActor.run {
                 for asset in instruments {
-                    self.marketData(contract: asset, interval: 15 * 60, strategyId: FollowMovingAverageStrategy.id)
+                    self.marketData(contract: asset, interval: 15 * 60, strategyId: DoNothingStrategy.id //FollowMovingAverageStrategy.id
+                    )
                 }
             }
         }
