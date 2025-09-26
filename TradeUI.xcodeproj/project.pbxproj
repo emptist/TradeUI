@@ -13,7 +13,6 @@
 		365ADED62BF388E4003403B3 /* README.md in Resources */ = {isa = PBXBuildFile; fileRef = 365ADED42BF388E4003403B3 /* README.md */; };
 		368BFD172DC846D0008527EA /* Run-Strategy-With-TradeUI-and-IB.md in Resources */ = {isa = PBXBuildFile; fileRef = 368BFD162DC846C9008527EA /* Run-Strategy-With-TradeUI-and-IB.md */; };
 		4886021A2E86A0B10066FBA4 /* AppCommands.swift in Sources */ = {isa = PBXBuildFile; fileRef = 488602192E86A0B10066FBA4 /* AppCommands.swift */; };
-		48AC7C892E8616760039EE87 /* TradingStrategy in Frameworks */ = {isa = PBXBuildFile; productRef = 48AC7C882E8616760039EE87 /* TradingStrategy */; };
 		AD6F73B42B67A6080012F5F8 /* TradeApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD6F73B32B67A6080012F5F8 /* TradeApp.swift */; };
 		AD6F73B82B67A60B0012F5F8 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = AD6F73B72B67A60B0012F5F8 /* Assets.xcassets */; };
 /* End PBXBuildFile section */
@@ -50,7 +49,6 @@
 			buildActionMask = 2147483647;
 			files = (
 				365ADECF2BF3871A003403B3 /* TradeInterface in Frameworks */,
-				48AC7C892E8616760039EE87 /* TradingStrategy in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -132,7 +130,6 @@
 			name = TradeUI;
 			packageProductDependencies = (
 				365ADECE2BF3871A003403B3 /* TradeInterface */,
-				48AC7C882E8616760039EE87 /* TradingStrategy */,
 			);
 			productName = TradeWithIt;
 			productReference = AD6F73B02B67A6080012F5F8 /* Trade With It.app */;
@@ -445,10 +442,6 @@
 		365ADECE2BF3871A003403B3 /* TradeInterface */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = TradeInterface;
-		};
-		48AC7C882E8616760039EE87 /* TradingStrategy */ = {
-			isa = XCSwiftPackageProductDependency;
-			productName = TradingStrategy;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
