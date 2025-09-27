@@ -9,6 +9,7 @@
 import Brokerage
 import Runtime
 import SwiftUI
+import AppLog
 
 // Move enums outside of the struct to ensure they're available during property initialization
 

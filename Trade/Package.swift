@@ -32,9 +32,14 @@ let package = Package(
     ],
     targets: [
         .target(
+            name: "AppLog",
+            dependencies: []
+        ),
+        .target(
             name: "Brokerage",
             dependencies: [
                 .product(name: "IBKit", package: "IBKit"),
+                .target(name: "AppLog")
             ]
         ),
         .target(

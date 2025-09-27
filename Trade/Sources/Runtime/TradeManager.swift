@@ -4,6 +4,7 @@ import NIOConcurrencyHelpers
 import OrderedCollections
 import Persistence
 import TradingStrategy
+import AppLog
 
 @Observable public class TradeManager: @unchecked Sendable {
     private let lock: NIOLock = NIOLock()
